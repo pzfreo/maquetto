@@ -1,0 +1,13 @@
+{
+  "name": "@maquette/api-proxy",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "echo 'Proxy not yet implemented'",
+    "build": "echo 'Proxy not yet implemented'",
+    "test": "echo 'No tests yet'",
+    "typecheck": "echo 'No typecheck yet'",
+    "lint": "echo 'No lint yet'"
+  }
+}

@@ -1,0 +1,394 @@
+/**
+ * Web Worker entry point for the CAD engine.
+ *
+ * Loads Pyodide + OCP.wasm + Build123d and executes user code.
+ * Loading sequence proven in pzfreo/wormgear — order matters.
+ *
+ * This file is the ONLY place that references Pyodide or Web Worker APIs.
+ * The UI layer never imports this directly.
+ */
+
+import type { WorkerRequest, WorkerResponse, EnginePhase } from '@maquette/api-types';
+
+// Pyodide types (loaded dynamically via importScripts)
+declare function importScripts(...urls: string[]): void;
+declare function loadPyodide(config: {
+  indexURL: string;
+  stdout?: (text: string) => void;
+  stderr?: (text: string) => void;
+}): Promise<PyodideInterface>;
+
+interface PyodideInterface {
+  loadPackage(packages: string[]): Promise<void>;
+  pyimport(name: string): PyProxy;
+  runPythonAsync(code: string): Promise<unknown>;
+  globals: PyProxy;
+  FS: {
+    mkdir(path: string): void;
+    writeFile(path: string, data: string | Uint8Array): void;
+    readFile(path: string, opts?: { encoding?: string }): Uint8Array;
+  };
+}
+
+interface PyProxy {
+  set_index_urls(urls: string[]): void;
+  set(key: string, value: unknown): void;
+  install(pkg: string | string[]): Promise<void>;
+  add_mock_package(name: string, version: string, options?: Record<string, string>): void;
+  get(key: string): unknown;
+  toJs(): unknown;
+  destroy(): void;
+}
+
+const PYODIDE_CDN = 'https://cdn.jsdelivr.net/pyodide/v0.29.0/full/';
+
+let pyodide: PyodideInterface | null = null;
+
+function postStatus(phase: EnginePhase, progress: number): void {
+  const msg: WorkerResponse = {
+    type: 'status',
+    status: { phase, progress },
+  };
+  self.postMessage(msg);
+}
+
+function postError(phase: EnginePhase, code: string, message: string): void {
+  const msg: WorkerResponse = {
+    type: 'status',
+    status: {
+      phase,
+      progress: 0,
+      error: { code, message },
+    },
+  };
+  self.postMessage(msg);
+}
+
+/**
+ * Initialize Pyodide + OCP.wasm + Build123d.
+ * Loading sequence from pzfreo/wormgear — order matters!
+ */
+async function initialize(): Promise<void> {
+  try {
+    // 1. Load Pyodide
+    postStatus('loading-pyodide', 10);
+    importScripts(`${PYODIDE_CDN}pyodide.js`);
+
+    pyodide = await loadPyodide({
+      indexURL: PYODIDE_CDN,
+      stdout: (text: string) => console.log('[py]', text),
+      stderr: (text: string) => console.warn('[py:err]', text),
+    });
+    postStatus('loading-pyodide', 25);
+
+    // 2. Load micropip + pydantic (pydantic MUST come from Pyodide's bundled version)
+    await pyodide.loadPackage(['micropip', 'pydantic']);
+    postStatus('loading-ocp', 30);
+
+    // 3. Set custom index for OCP.wasm (NOT on PyPI — pre-compiled WASM binaries)
+    const micropip = pyodide.pyimport('micropip');
+    micropip.set_index_urls([
+      'https://yeicor.github.io/OCP.wasm',
+      'https://pypi.org/simple',
+    ]);
+    postStatus('loading-ocp', 35);
+
+    // 4. Install lib3mf
+    await micropip.install('lib3mf');
+    postStatus('loading-ocp', 45);
+
+    // 5. Mock py-lib3mf (build123d expects it as separate module)
+    await pyodide.runPythonAsync(`
+import micropip
+micropip.add_mock_package("py-lib3mf", "2.4.1",
+    modules={"py_lib3mf": "from lib3mf import *"})
+`);
+    postStatus('loading-ocp', 50);
+
+    // 6. Install ocp_vscode from Jojain's fork (no PyPerclip — fails in WASM)
+    await micropip.install(
+      'https://raw.githubusercontent.com/Jojain/vscode-ocp-cad-viewer/no_pyperclip/dist/ocp_vscode-2.5.3-py3-none-any.whl',
+    );
+    postStatus('loading-build123d', 60);
+
+    // 7. Install build123d + sqlite3
+    await micropip.install('build123d');
+    postStatus('loading-build123d', 80);
+
+    await micropip.install('sqlite3');
+    postStatus('initializing', 85);
+
+    // 8. Pre-import build123d and numpy into global namespace
+    await pyodide.runPythonAsync(`
+from build123d import *
+import numpy
+`);
+    postStatus('initializing', 95);
+
+    // 9. Load the execute helper script
+    await pyodide.runPythonAsync(EXECUTE_HELPER);
+    postStatus('ready', 100);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    postError('error', 'INIT_FAILED', message);
+  }
+}
+
+/**
+ * Execute user code, scan for shapes, export glTF + metadata.
+ */
+async function handleCompile(
+  requestId: string,
+  code: string,
+  quality: string,
+): Promise<void> {
+  if (!pyodide) {
+    const msg: WorkerResponse = {
+      type: 'compile-error',
+      requestId,
+      error: { code: 'NOT_READY', message: 'Engine not initialized' },
+    };
+    self.postMessage(msg);
+    return;
+  }
+
+  try {
+    // Pass code and quality to the Python execute helper
+    pyodide.globals.set('_user_code', code);
+    pyodide.globals.set('_quality_level', quality);
+
+    const resultJson = (await pyodide.runPythonAsync(
+      '_execute_and_export(_user_code, _quality_level)',
+    )) as string;
+
+    const result = JSON.parse(resultJson);
+
+    const msg: WorkerResponse = {
+      type: 'compile-result',
+      requestId,
+      result,
+    };
+    self.postMessage(msg);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const msg: WorkerResponse = {
+      type: 'compile-error',
+      requestId,
+      error: { code: 'EXEC_FAILED', message },
+    };
+    self.postMessage(msg);
+  }
+}
+
+// Message handler
+self.onmessage = (e: MessageEvent<WorkerRequest>) => {
+  const msg = e.data;
+
+  switch (msg.type) {
+    case 'init':
+      void initialize();
+      break;
+
+    case 'compile':
+      void handleCompile(msg.requestId, msg.code, msg.quality);
+      break;
+  }
+};
+
+/**
+ * Python helper script for executing user code and exporting results.
+ * Runs inside Pyodide. Scans for Shape objects, computes metadata,
+ * tessellates and exports as glTF.
+ */
+const EXECUTE_HELPER = `
+import json
+import base64
+import time
+import traceback
+import sys
+
+# Color palette (RGB 0-1) matching TypeScript PART_COLORS
+_PALETTE = [
+    [0.259, 0.522, 0.957],
+    [0.957, 0.318, 0.216],
+    [0.204, 0.659, 0.325],
+    [1.000, 0.702, 0.000],
+    [0.612, 0.153, 0.690],
+    [0.000, 0.737, 0.831],
+    [0.957, 0.490, 0.000],
+    [0.345, 0.298, 0.659],
+    [0.827, 0.184, 0.455],
+    [0.294, 0.686, 0.514],
+    [0.475, 0.333, 0.282],
+    [0.620, 0.620, 0.620],
+]
+
+_QUALITY_MAP = {
+    'draft':  (0.1,   0.5),
+    'normal': (0.01,  0.2),
+    'high':   (0.001, 0.1),
+}
+
+def _execute_and_export(code_str, quality_level):
+    """Execute user code, find shapes, export glTF + metadata as JSON string."""
+    from build123d import (
+        Shape, Compound, Part, Sketch, BuildPart, BuildSketch, BuildLine,
+        export_gltf, Axis, Color
+    )
+    import numpy
+
+    start_time = time.time()
+
+    # Prepare namespace with build123d pre-imported
+    namespace = {'__builtins__': __builtins__}
+    exec('from build123d import *', namespace)
+    exec('import numpy', namespace)
+
+    # Execute user code
+    try:
+        exec(code_str, namespace)
+    except SyntaxError as e:
+        elapsed = (time.time() - start_time) * 1000
+        return json.dumps({
+            'gltfBase64': '',
+            'parts': [],
+            'errors': [{
+                'type': 'syntax',
+                'message': str(e.msg),
+                'line': e.lineno,
+                'column': e.offset,
+            }],
+            'warnings': [],
+            'executionTimeMs': round(elapsed),
+        })
+    except Exception as e:
+        elapsed = (time.time() - start_time) * 1000
+        # Try to extract line number from traceback
+        line_no = None
+        tb = traceback.extract_tb(e.__traceback__)
+        for frame in reversed(tb):
+            if frame.filename == '<string>':
+                line_no = frame.lineno
+                break
+        return json.dumps({
+            'gltfBase64': '',
+            'parts': [],
+            'errors': [{
+                'type': 'runtime',
+                'message': str(e),
+                'line': line_no,
+                'column': None,
+            }],
+            'warnings': [],
+            'executionTimeMs': round(elapsed),
+        })
+
+    # Scan namespace for Shape-like objects
+    shapes = []
+    for name, obj in namespace.items():
+        if name.startswith('_'):
+            continue
+        if isinstance(obj, (Shape, Compound, Part, Sketch)):
+            shapes.append((name, obj))
+        # Also check for BuildPart context manager results
+        elif hasattr(obj, 'part') and isinstance(getattr(obj, 'part', None), (Shape, Part)):
+            shapes.append((name, obj.part))
+        elif hasattr(obj, 'sketch') and isinstance(getattr(obj, 'sketch', None), (Shape, Sketch)):
+            shapes.append((name, obj.sketch))
+
+    if not shapes:
+        elapsed = (time.time() - start_time) * 1000
+        return json.dumps({
+            'gltfBase64': '',
+            'parts': [],
+            'errors': [],
+            'warnings': ['No shapes found in the code output.'],
+            'executionTimeMs': round(elapsed),
+        })
+
+    # Build part metadata
+    parts_meta = []
+    shape_objects = []
+    for i, (name, shape) in enumerate(shapes):
+        try:
+            bb = shape.bounding_box()
+            bb_min = [bb.min.X, bb.min.Y, bb.min.Z]
+            bb_max = [bb.max.X, bb.max.Y, bb.max.Z]
+        except Exception:
+            bb_min = [0, 0, 0]
+            bb_max = [0, 0, 0]
+
+        try:
+            face_count = len(shape.faces())
+        except Exception:
+            face_count = 0
+
+        try:
+            vol = float(shape.volume) if hasattr(shape, 'volume') else None
+        except Exception:
+            vol = None
+
+        color = _PALETTE[i % len(_PALETTE)]
+        part_id = f'@{i + 1}'
+
+        parts_meta.append({
+            'id': part_id,
+            'color': color,
+            'boundingBox': {'min': bb_min, 'max': bb_max},
+            'faceCount': face_count,
+            'volume': vol,
+        })
+
+        # Apply color to shape for glTF export
+        try:
+            shape.color = Color(*[c for c in color])
+        except Exception:
+            pass
+
+        shape_objects.append(shape)
+
+    # Export combined glTF
+    linear_defl, angular_defl = _QUALITY_MAP.get(quality_level, _QUALITY_MAP['normal'])
+    gltf_base64 = ''
+
+    try:
+        if len(shape_objects) == 1:
+            assembly = shape_objects[0]
+        else:
+            assembly = Compound(children=shape_objects)
+
+        export_gltf(
+            assembly,
+            '/tmp/output.glb',
+            binary=True,
+            linear_deflection=linear_defl,
+            angular_deflection=angular_defl,
+        )
+
+        with open('/tmp/output.glb', 'rb') as f:
+            gltf_bytes = f.read()
+        gltf_base64 = base64.b64encode(gltf_bytes).decode('ascii')
+    except Exception as e:
+        elapsed = (time.time() - start_time) * 1000
+        return json.dumps({
+            'gltfBase64': '',
+            'parts': parts_meta,
+            'errors': [{
+                'type': 'geometry',
+                'message': f'glTF export failed: {e}',
+                'line': None,
+                'column': None,
+            }],
+            'warnings': [],
+            'executionTimeMs': round(elapsed),
+        })
+
+    elapsed = (time.time() - start_time) * 1000
+    return json.dumps({
+        'gltfBase64': gltf_base64,
+        'parts': parts_meta,
+        'errors': [],
+        'warnings': [],
+        'executionTimeMs': round(elapsed),
+    })
+`;

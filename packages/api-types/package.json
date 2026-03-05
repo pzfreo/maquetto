@@ -1,0 +1,18 @@
+{
+  "name": "@maquette/api-types",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'No tests yet'",
+    "lint": "echo 'No lint yet'"
+  },
+  "devDependencies": {
+    "typescript": "~5.7.0"
+  }
+}

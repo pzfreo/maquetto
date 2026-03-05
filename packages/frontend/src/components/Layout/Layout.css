@@ -1,0 +1,38 @@
+.layout {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  background: #1a1a2e;
+  color: #e0e0e0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow: hidden;
+}
+
+.layout-panels {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr 0.8fr;
+  flex: 1;
+  min-height: 0;
+  gap: 1px;
+  background: #2a2a3e;
+}
+
+.layout-panel {
+  overflow: hidden;
+  background: #1e1e2e;
+}
+
+.layout-editor {
+  display: flex;
+  flex-direction: column;
+}
+
+.layout-viewport {
+  position: relative;
+  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+}
+
+.layout-chat {
+  display: flex;
+  flex-direction: column;
+}
