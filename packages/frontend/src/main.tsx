@@ -1,5 +1,8 @@
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { registerServiceWorker } from './sw-register';
+
+registerServiceWorker();
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Root element not found');
