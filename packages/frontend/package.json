@@ -13,10 +13,14 @@
     "lint": "echo 'No lint yet'"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.58",
+    "@ai-sdk/google": "^3.0.43",
+    "@ai-sdk/react": "^3.0.118",
     "@maquette/api-types": "workspace:*",
     "@monaco-editor/react": "^4.7.0",
     "@react-three/drei": "^10.0.0",
     "@react-three/fiber": "^9.0.0",
+    "ai": "^6.0.116",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "three": "^0.170.0",
