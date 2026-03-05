@@ -6,12 +6,13 @@ import './Layout.css';
 
 interface LayoutProps {
   onCompile?: () => void;
+  onRetryEngine?: () => void;
 }
 
-export function Layout({ onCompile }: LayoutProps) {
+export function Layout({ onCompile, onRetryEngine }: LayoutProps) {
   return (
     <div className="layout">
-      <Toolbar onCompile={onCompile} />
+      <Toolbar onCompile={onCompile} onRetryEngine={onRetryEngine} />
       <div className="layout-panels">
         <div className="layout-panel layout-editor">
           <EditorPanel onCompile={onCompile} />

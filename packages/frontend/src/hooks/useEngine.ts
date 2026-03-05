@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAppStore } from '../store';
 import { createWorkerEngine } from '../engine/create-worker-engine';
 import type { CadEngine } from '@maquette/api-types';
@@ -9,10 +9,12 @@ import type { CadEngine } from '@maquette/api-types';
  */
 export function useEngine(): CadEngine | null {
   const engineRef = useRef<CadEngine | null>(null);
+  const [, forceRender] = useState(0);
 
   useEffect(() => {
     const engine = createWorkerEngine();
     engineRef.current = engine;
+    forceRender((n) => n + 1);
 
     const unsubscribe = engine.subscribe((status) => {
       useAppStore.getState().setEngineStatus(status);

@@ -21,7 +21,11 @@ const PHASE_COLORS: Record<EnginePhase, string> = {
   error: '#f44336',
 };
 
-export function EngineStatusBadge() {
+interface EngineStatusBadgeProps {
+  onRetry?: () => void;
+}
+
+export function EngineStatusBadge({ onRetry }: EngineStatusBadgeProps) {
   const { phase, progress } = useAppStore((s) => s.engineStatus);
 
   const isLoading =
@@ -62,6 +66,22 @@ export function EngineStatusBadge() {
         </div>
       )}
       <span>{PHASE_LABELS[phase]}</span>
+      {phase === 'error' && onRetry && (
+        <button
+          onClick={onRetry}
+          style={{
+            padding: '2px 8px',
+            borderRadius: '3px',
+            border: '1px solid #f44336',
+            background: 'transparent',
+            color: '#f44336',
+            fontSize: '11px',
+            cursor: 'pointer',
+          }}
+        >
+          Retry
+        </button>
+      )}
     </div>
   );
 }

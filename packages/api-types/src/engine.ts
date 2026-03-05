@@ -74,6 +74,9 @@ export interface CadEngine {
   /** Compile Build123d code and return geometry + metadata. Errors are data, never thrown. */
   compile(code: string, quality: QualityLevel): Promise<CompileResult>;
 
+  /** Retry initialization after an error. */
+  retry(): void;
+
   /** Release all resources. */
   dispose(): void;
 }

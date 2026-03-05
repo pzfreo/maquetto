@@ -3,6 +3,7 @@ import Editor, { type OnMount } from '@monaco-editor/react';
 import type * as monacoTypes from 'monaco-editor';
 import { useAppStore } from '../../store';
 import { registerBuild123dCompletions } from './build123d-completions';
+import { CompilationErrors } from './CompilationErrors';
 
 type Monaco = typeof monacoTypes;
 type IStandaloneCodeEditor = monacoTypes.editor.IStandaloneCodeEditor;
@@ -100,6 +101,7 @@ export function EditorPanel({ onCompile }: EditorPanelProps) {
           }}
         />
       </div>
+      <CompilationErrors />
     </div>
   );
 }

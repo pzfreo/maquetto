@@ -47,6 +47,17 @@ function createMockEngine(options?: {
       return options?.compileResult ?? defaultResult;
     },
 
+    retry() {
+      // Re-emit init phases on retry
+      if (options?.initPhases) {
+        for (const status of options.initPhases) {
+          for (const cb of listeners) {
+            setTimeout(() => cb(status), 0);
+          }
+        }
+      }
+    },
+
     dispose() {
       listeners.clear();
     },
@@ -137,6 +148,26 @@ describe('CadEngine contract', () => {
     const result = await engine.compile('print(undefined_var)', 'normal');
     expect(result.errors[0]?.type).toBe('runtime');
     expect(result.errors[0]?.line).toBe(5);
+  });
+
+  it('retry re-emits init phases', async () => {
+    const phases: EngineStatus[] = [
+      { phase: 'loading-pyodide', progress: 10 },
+      { phase: 'ready', progress: 100 },
+    ];
+    const engine = createMockEngine({ initPhases: phases });
+    const callback = vi.fn();
+    engine.subscribe(callback);
+
+    // Wait for initial phases
+    await new Promise((r) => setTimeout(r, 10));
+    const initialCallCount = callback.mock.calls.length;
+
+    engine.retry();
+    await new Promise((r) => setTimeout(r, 10));
+
+    // Should have received additional calls from retry
+    expect(callback.mock.calls.length).toBeGreaterThan(initialCallCount);
   });
 
   it('dispose cleans up', () => {

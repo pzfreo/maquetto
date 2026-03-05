@@ -1,15 +1,19 @@
+import { useState } from 'react';
 import { useAppStore } from '../../store';
 import { EngineStatusBadge } from './EngineStatusBadge';
+import { ProviderSettingsModal } from '../Settings/ProviderSettingsModal';
 
 interface ToolbarProps {
   onCompile?: () => void;
+  onRetryEngine?: () => void;
 }
 
-export function Toolbar({ onCompile }: ToolbarProps) {
+export function Toolbar({ onCompile, onRetryEngine }: ToolbarProps) {
   const enginePhase = useAppStore((s) => s.engineStatus.phase);
   const compilationStatus = useAppStore((s) => s.compilationStatus);
   const qualityLevel = useAppStore((s) => s.qualityLevel);
   const setQualityLevel = useAppStore((s) => s.setQualityLevel);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const isReady = enginePhase === 'ready';
   const isCompiling = compilationStatus === 'compiling';
@@ -57,7 +61,7 @@ export function Toolbar({ onCompile }: ToolbarProps) {
         {isCompiling ? 'Running…' : '▶ Run'}
       </button>
 
-      <EngineStatusBadge />
+      <EngineStatusBadge onRetry={onRetryEngine} />
 
       <div style={{ flex: 1 }} />
 
@@ -82,6 +86,7 @@ export function Toolbar({ onCompile }: ToolbarProps) {
 
       <button
         title="Settings"
+        onClick={() => setSettingsOpen(true)}
         style={{
           padding: '4px 8px',
           borderRadius: '4px',
@@ -94,6 +99,11 @@ export function Toolbar({ onCompile }: ToolbarProps) {
       >
         ⚙
       </button>
+
+      <ProviderSettingsModal
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+      />
     </div>
   );
 }

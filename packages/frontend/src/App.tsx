@@ -1,11 +1,40 @@
+import { useState, useEffect, useCallback } from 'react';
 import { useEngine } from './hooks/useEngine';
 import { useCompilation } from './hooks/useCompilation';
 import { Layout } from './components/Layout/Layout';
+import {
+  FirstRunScreen,
+  useFirstRun,
+} from './components/FirstRun/FirstRunScreen';
+import { useAppStore } from './store';
 import './styles/global.css';
 
 export function App() {
   const engine = useEngine();
   const { triggerCompile } = useCompilation(engine);
+  const showFirstRun = useFirstRun();
+  const [firstRunDismissed, setFirstRunDismissed] = useState(false);
 
-  return <Layout onCompile={triggerCompile} />;
+  // Auto-compile the starter script when engine becomes ready
+  const enginePhase = useAppStore((s) => s.engineStatus.phase);
+  const [hasAutoCompiled, setHasAutoCompiled] = useState(false);
+
+  useEffect(() => {
+    if (enginePhase === 'ready' && !hasAutoCompiled) {
+      setHasAutoCompiled(true);
+      triggerCompile();
+    }
+  }, [enginePhase, hasAutoCompiled, triggerCompile]);
+
+  const handleRetryEngine = useCallback(() => {
+    engine?.retry();
+  }, [engine]);
+
+  if (showFirstRun && !firstRunDismissed) {
+    return <FirstRunScreen onComplete={() => setFirstRunDismissed(true)} />;
+  }
+
+  return (
+    <Layout onCompile={triggerCompile} onRetryEngine={handleRetryEngine} />
+  );
 }

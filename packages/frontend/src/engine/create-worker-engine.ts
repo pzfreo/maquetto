@@ -80,6 +80,14 @@ export function createWorkerEngine(): CadEngine {
       });
     },
 
+    retry(): void {
+      // Re-send init to restart the loading sequence
+      worker.postMessage({
+        type: 'init',
+        requestId: crypto.randomUUID(),
+      });
+    },
+
     dispose(): void {
       worker.terminate();
       listeners.clear();
