@@ -14,7 +14,7 @@ export function Layout({ onCompile }: LayoutProps) {
       <Toolbar onCompile={onCompile} />
       <div className="layout-panels">
         <div className="layout-panel layout-editor">
-          <EditorPanel />
+          <EditorPanel onCompile={onCompile} />
         </div>
         <div className="layout-panel layout-viewport">
           <ViewportPanel />
