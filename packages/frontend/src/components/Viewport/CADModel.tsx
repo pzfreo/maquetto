@@ -1,22 +1,28 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { useThree, useFrame } from '@react-three/fiber';
+import { useThree } from '@react-three/fiber';
 import { useAppStore } from '../../store';
 
 interface CADModelProps {
   data: ArrayBuffer;
 }
 
+interface ExtractedMesh {
+  mesh: THREE.Mesh;
+  partId: string;
+}
+
 export function CADModel({ data }: CADModelProps) {
   const parts = useAppStore((s) => s.parts);
+  const selectedPartIds = useAppStore((s) => s.selectedPartIds);
+  const hiddenPartIds = useAppStore((s) => s.hiddenPartIds);
   const togglePartSelection = useAppStore((s) => s.togglePartSelection);
   const setSelectedPartIds = useAppStore((s) => s.setSelectedPartIds);
 
   const [scene, setScene] = useState<THREE.Group | null>(null);
   const groupRef = useRef<THREE.Group>(null);
-  const meshMapRef = useRef<Map<string, THREE.Mesh>>(new Map());
-  const { camera, raycaster, pointer, invalidate } = useThree();
+  const { camera, raycaster, pointer } = useThree();
 
   // Load glTF from ArrayBuffer
   useEffect(() => {
@@ -48,15 +54,14 @@ export function CADModel({ data }: CADModelProps) {
 
     return () => {
       setScene(null);
-      meshMapRef.current.clear();
     };
   }, [data]);
 
-  // Map meshes to parts by traversal order and apply materials.
+  // Extract meshes from scene and pair with part metadata.
   // Build123d's export_gltf names meshes "COMPOUND", "COMPOUND_1" etc.,
-  // so we match by index order instead.
-  useEffect(() => {
-    if (!scene) return;
+  // so we match by traversal index order.
+  const extractedMeshes = useMemo<ExtractedMesh[]>(() => {
+    if (!scene || parts.length === 0) return [];
 
     const meshes: THREE.Mesh[] = [];
     scene.traverse((child) => {
@@ -65,59 +70,38 @@ export function CADModel({ data }: CADModelProps) {
       }
     });
 
-    if (meshes.length !== parts.length && parts.length > 0) {
+    if (meshes.length !== parts.length) {
       console.warn(
         `[Viewport] Mesh count (${meshes.length}) != part count (${parts.length}). ` +
         `Color/selection mapping may be incorrect.`,
       );
     }
 
-    const newMap = new Map<string, THREE.Mesh>();
-
-    meshes.forEach((mesh, index) => {
+    return meshes.map((mesh, index) => {
       const partMeta = parts[index];
-      if (!partMeta) return;
+      if (!partMeta) return null;
 
-      // Store part ID on mesh for click detection
+      // Detach from glTF scene so we can render individually
+      mesh.removeFromParent();
+
+      // Apply the glTF scene's scale to mesh world matrix
+      mesh.applyMatrix4(scene.matrixWorld);
+
       mesh.userData.partId = partMeta.id;
-      newMap.set(partMeta.id, mesh);
-
-      // Apply material with part color
       mesh.material = new THREE.MeshStandardMaterial({
         color: new THREE.Color(...partMeta.color),
         metalness: 0.1,
         roughness: 0.6,
         side: THREE.DoubleSide,
       });
-    });
 
-    meshMapRef.current = newMap;
-    invalidate();
-  }, [scene, parts, invalidate]);
-
-  // Apply visibility and selection every frame.
-  // Read directly from Zustand store to avoid stale closure issues in R3F's render loop.
-  useFrame(() => {
-    const map = meshMapRef.current;
-    if (map.size === 0) return;
-
-    const { hiddenPartIds, selectedPartIds } = useAppStore.getState();
-
-    for (const [partId, mesh] of map) {
-      mesh.visible = !hiddenPartIds.includes(partId);
-
-      const mat = mesh.material as THREE.MeshStandardMaterial;
-      if (selectedPartIds.includes(partId)) {
-        mat.emissive.setRGB(0.15, 0.15, 0.15);
-      } else {
-        mat.emissive.setRGB(0, 0, 0);
-      }
-    }
-  });
+      return { mesh, partId: partMeta.id };
+    }).filter((m): m is ExtractedMesh => m !== null);
+  }, [scene, parts]);
 
   // Click handler for part selection
   useEffect(() => {
-    if (!scene || !groupRef.current) return;
+    if (!groupRef.current) return;
 
     const handleClick = (event: MouseEvent) => {
       const canvas = event.target as HTMLCanvasElement;
@@ -155,7 +139,6 @@ export function CADModel({ data }: CADModelProps) {
     window.addEventListener('click', handleClick);
     return () => window.removeEventListener('click', handleClick);
   }, [
-    scene,
     camera,
     raycaster,
     pointer,
@@ -164,11 +147,28 @@ export function CADModel({ data }: CADModelProps) {
     setSelectedPartIds,
   ]);
 
-  if (!scene) return null;
-
   return (
     <group ref={groupRef}>
-      <primitive object={scene} />
+      {extractedMeshes.map(({ mesh, partId }) => {
+        const isHidden = hiddenPartIds.includes(partId);
+        const isSelected = selectedPartIds.includes(partId);
+
+        // Apply selection emissive
+        const mat = mesh.material as THREE.MeshStandardMaterial;
+        if (isSelected) {
+          mat.emissive.setRGB(0.15, 0.15, 0.15);
+        } else {
+          mat.emissive.setRGB(0, 0, 0);
+        }
+
+        return (
+          <primitive
+            key={partId}
+            object={mesh}
+            visible={!isHidden}
+          />
+        );
+      })}
     </group>
   );
 }
