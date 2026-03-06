@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "git fetch --unshallow || git fetch --depth=999999 origin main || true && pnpm build",
+  "buildCommand": "echo 'Before fetch:' && git rev-list --count HEAD && git remote -v && git fetch --unshallow origin 2>&1 || echo 'unshallow failed, trying deep fetch' && git fetch --depth=100000 origin main 2>&1 || true && echo 'After fetch:' && git rev-list --count HEAD && pnpm build",
   "outputDirectory": "packages/frontend/dist",
   "installCommand": "pnpm install",
   "rewrites": [
