@@ -4,11 +4,11 @@
   "outputDirectory": "packages/frontend/dist",
   "installCommand": "pnpm install",
   "rewrites": [
-    { "source": "/((?!assets/).*)", "destination": "/index.html" }
+    { "source": "/((?!api/)(?!assets/).*)", "destination": "/index.html" }
   ],
   "headers": [
     {
-      "source": "/(.*)",
+      "source": "/((?!api/).*)",
       "headers": [
         {
           "key": "Cross-Origin-Embedder-Policy",
