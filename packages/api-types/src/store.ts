@@ -47,9 +47,12 @@ export interface CompilationSlice {
 
 export interface ViewportSlice {
   readonly selectedPartIds: ReadonlyArray<string>;
+  readonly hiddenPartIds: ReadonlyArray<string>;
   readonly cameraDescription: string;
   setSelectedPartIds: (ids: ReadonlyArray<string>) => void;
   togglePartSelection: (id: string) => void;
+  togglePartVisibility: (id: string) => void;
+  showAllParts: () => void;
   setCameraDescription: (desc: string) => void;
 }
 

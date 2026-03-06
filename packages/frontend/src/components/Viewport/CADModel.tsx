@@ -11,6 +11,7 @@ interface CADModelProps {
 export function CADModel({ data }: CADModelProps) {
   const parts = useAppStore((s) => s.parts);
   const selectedPartIds = useAppStore((s) => s.selectedPartIds);
+  const hiddenPartIds = useAppStore((s) => s.hiddenPartIds);
   const togglePartSelection = useAppStore((s) => s.togglePartSelection);
   const setSelectedPartIds = useAppStore((s) => s.setSelectedPartIds);
 
@@ -51,33 +52,49 @@ export function CADModel({ data }: CADModelProps) {
     };
   }, [data]);
 
-  // Apply per-part materials and selection highlighting
-  // Build123d's export_gltf names meshes "COMPOUND", "COMPOUND_1", etc.
-  // rather than our part IDs ("@1", "@2"), so we match by fallback.
+  // Apply per-part materials, selection highlighting, and visibility.
+  // Match meshes to parts by traversal order index (build123d's export_gltf
+  // names meshes "COMPOUND", "COMPOUND_1" etc., not our part IDs).
   useEffect(() => {
     if (!scene) return;
 
-    // Default to first part's color for all unmatched meshes
-    const defaultPart = parts[0];
-
+    const meshes: THREE.Mesh[] = [];
     scene.traverse((child) => {
       if (child instanceof THREE.Mesh) {
-        const partMeta = parts.find((p) => p.id === child.name) ?? defaultPart;
-        if (partMeta) {
-          const isSelected = selectedPartIds.includes(partMeta.id);
-          child.material = new THREE.MeshStandardMaterial({
-            color: new THREE.Color(...partMeta.color),
-            metalness: 0.1,
-            roughness: 0.6,
-            emissive: isSelected
-              ? new THREE.Color(0.15, 0.15, 0.15)
-              : new THREE.Color(0, 0, 0),
-            side: THREE.DoubleSide,
-          });
-        }
+        meshes.push(child);
       }
     });
-  }, [scene, parts, selectedPartIds]);
+
+    if (meshes.length !== parts.length && parts.length > 0) {
+      console.warn(
+        `[Viewport] Mesh count (${meshes.length}) != part count (${parts.length}). ` +
+        `Color/selection mapping may be incorrect.`,
+      );
+    }
+
+    meshes.forEach((mesh, index) => {
+      const partMeta = parts[index];
+      if (!partMeta) return;
+
+      // Store part ID on mesh for click detection
+      mesh.userData.partId = partMeta.id;
+
+      // Visibility
+      mesh.visible = !hiddenPartIds.includes(partMeta.id);
+
+      // Material
+      const isSelected = selectedPartIds.includes(partMeta.id);
+      mesh.material = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(...partMeta.color),
+        metalness: 0.1,
+        roughness: 0.6,
+        emissive: isSelected
+          ? new THREE.Color(0.15, 0.15, 0.15)
+          : new THREE.Color(0, 0, 0),
+        side: THREE.DoubleSide,
+      });
+    });
+  }, [scene, parts, selectedPartIds, hiddenPartIds]);
 
   // Click handler for part selection
   useEffect(() => {
@@ -99,8 +116,12 @@ export function CADModel({ data }: CADModelProps) {
 
       if (intersects.length > 0) {
         const hitMesh = intersects[0]!.object;
-        // Find which part this mesh belongs to by matching name or defaulting to first part
-        const partMeta = parts.find((p) => p.id === hitMesh.name) ?? parts[0];
+        // Look up the part ID stashed on the mesh during material assignment
+        const partId = hitMesh.userData.partId as string | undefined;
+        const partMeta = partId
+          ? parts.find((p) => p.id === partId)
+          : undefined;
+
         if (partMeta) {
           if (event.shiftKey) {
             togglePartSelection(partMeta.id);
@@ -120,6 +141,7 @@ export function CADModel({ data }: CADModelProps) {
     camera,
     raycaster,
     pointer,
+    parts,
     togglePartSelection,
     setSelectedPartIds,
   ]);

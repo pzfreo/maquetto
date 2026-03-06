@@ -25,7 +25,7 @@ export function PartBadge({ partId }: PartBadgeProps) {
         border: `1px solid ${cssColor}44`,
       }}
     >
-      {partId}
+      {part?.name ? `${partId}: ${part.name}` : partId}
     </span>
   );
 }

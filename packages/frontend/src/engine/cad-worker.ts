@@ -126,7 +126,7 @@ micropip.add_mock_package("py-lib3mf", "2.4.1",
 
     // 8. Install build123d + sqlite3
     console.log('[Worker] Installing build123d + sqlite3...');
-    await micropip.install(['build123d', 'sqlite3']);
+    await micropip.install(['build123d==0.10.0', 'sqlite3']);
     postStatus('loading-build123d', 85);
 
     // 9. Pre-import build123d and numpy into global namespace
@@ -249,6 +249,28 @@ _QUALITY_MAP = {
     'high':   (0.001, 0.1),
 }
 
+# Generic variable names that don't make useful part labels
+_GENERIC_NAMES = {'result', 'obj', 'shape', 'part', 'compound', 'assembly',
+                  'output', 'model', 'thing', 'temp', 'tmp'}
+
+def _index_to_letter_id(i):
+    """Convert 0-based index to letter label: 0->A, 1->B, ... 25->Z, 26->AA."""
+    result_str = ''
+    n = i
+    while True:
+        result_str = chr(ord('A') + (n % 26)) + result_str
+        n = n // 26 - 1
+        if n < 0:
+            break
+    return result_str
+
+def _var_name_to_display(name):
+    """Convert Python variable name to Title Case display name.
+    Returns None for generic or single-letter names."""
+    if len(name) <= 1 or name.lower() in _GENERIC_NAMES:
+        return None
+    return ' '.join(word.capitalize() for word in name.split('_'))
+
 def _execute_and_export(code_str, quality_level):
     """Execute user code, find shapes, export glTF + metadata as JSON string."""
     from build123d import (
@@ -360,10 +382,12 @@ def _execute_and_export(code_str, quality_level):
             vol = None
 
         color = _PALETTE[i % len(_PALETTE)]
-        part_id = f'@{i + 1}'
+        part_id = _index_to_letter_id(i)
+        display_name = _var_name_to_display(name)
 
         parts_meta.append({
             'id': part_id,
+            'name': display_name,
             'color': color,
             'boundingBox': {'min': bb_min, 'max': bb_max},
             'faceCount': face_count,

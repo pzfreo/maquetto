@@ -33,7 +33,8 @@ describe('Compile flow integration', () => {
       gltfBase64: btoa('test-glb'),
       parts: [
         {
-          id: '@1',
+          id: 'A',
+          name: null,
           color: [0.259, 0.522, 0.957],
           boundingBox: { min: [0, 0, 0], max: [10, 10, 10] },
           faceCount: 6,
@@ -58,7 +59,7 @@ describe('Compile flow integration', () => {
     const state = useAppStore.getState();
     expect(state.compilationStatus).toBe('success');
     expect(state.parts).toHaveLength(1);
-    expect(state.parts[0]?.id).toBe('@1');
+    expect(state.parts[0]?.id).toBe('A');
     expect(state.errors).toHaveLength(0);
     expect(state.gltfData).not.toBeNull();
     expect(state.executionTimeMs).toBe(42);
