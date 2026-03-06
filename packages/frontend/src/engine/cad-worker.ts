@@ -264,6 +264,9 @@ def _execute_and_export(code_str, quality_level):
     exec('from build123d import *', namespace)
     exec('import numpy', namespace)
 
+    # Snapshot namespace keys before user code so we only scan user-created variables
+    pre_exec_names = set(namespace.keys())
+
     # Execute user code
     try:
         exec(code_str, namespace)
@@ -308,10 +311,10 @@ def _execute_and_export(code_str, quality_level):
             'executionTimeMs': round(elapsed),
         })
 
-    # Scan namespace for Shape-like objects
+    # Scan only user-created variables for Shape-like objects
     shapes = []
     for name, obj in namespace.items():
-        if name.startswith('_'):
+        if name in pre_exec_names or name.startswith('_'):
             continue
         if isinstance(obj, (Shape, Compound, Part, Sketch)):
             print(f'[export] Found shape: {name} ({type(obj).__name__})')
