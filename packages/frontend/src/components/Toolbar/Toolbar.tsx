@@ -186,6 +186,18 @@ export function Toolbar({ onCompile, onRetryEngine }: ToolbarProps) {
         ⚙
       </button>
 
+      <span
+        title={`Build ${__BUILD_NUMBER__} (${__COMMIT_HASH__})`}
+        style={{
+          fontSize: '10px',
+          color: '#555',
+          fontFamily: 'monospace',
+          userSelect: 'none',
+        }}
+      >
+        b{__BUILD_NUMBER__}
+      </span>
+
       <ProviderSettingsModal
         isOpen={settingsOpen}
         onClose={() => setSettingsOpen(false)}
