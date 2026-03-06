@@ -12,6 +12,9 @@ export default defineConfig({
   },
   worker: {
     format: 'es',
+    rollupOptions: {
+      external: [/^https:\/\//],
+    },
   },
   resolve: {
     alias: {

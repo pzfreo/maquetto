@@ -10,13 +10,15 @@
 
 import type { WorkerRequest, WorkerResponse, EnginePhase } from '@maquetto/api-types';
 
-// Pyodide types (loaded dynamically via importScripts)
-declare function importScripts(...urls: string[]): void;
-declare function loadPyodide(config: {
+// Pyodide ESM import — use .mjs for ES module workers
+// @ts-expect-error — Pyodide loaded from CDN, no type declarations
+import { loadPyodide as _loadPyodide } from 'https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.mjs';
+
+const loadPyodide = _loadPyodide as (config: {
   indexURL: string;
   stdout?: (text: string) => void;
   stderr?: (text: string) => void;
-}): Promise<PyodideInterface>;
+}) => Promise<PyodideInterface>;
 
 interface PyodideInterface {
   loadPackage(packages: string[]): Promise<void>;
@@ -70,9 +72,8 @@ function postError(phase: EnginePhase, code: string, message: string): void {
  */
 async function initialize(): Promise<void> {
   try {
-    // 1. Load Pyodide
+    // 1. Load Pyodide (imported as ESM at top of file)
     postStatus('loading-pyodide', 10);
-    importScripts(`${PYODIDE_CDN}pyodide.js`);
 
     pyodide = await loadPyodide({
       indexURL: PYODIDE_CDN,
