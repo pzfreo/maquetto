@@ -73,6 +73,7 @@ function postError(phase: EnginePhase, code: string, message: string): void {
 async function initialize(): Promise<void> {
   try {
     // 1. Load Pyodide (imported as ESM at top of file)
+    console.log('[Worker] Loading Pyodide from CDN...');
     postStatus('loading-pyodide', 10);
 
     pyodide = await loadPyodide({
@@ -80,13 +81,16 @@ async function initialize(): Promise<void> {
       stdout: (text: string) => console.log('[py]', text),
       stderr: (text: string) => console.warn('[py:err]', text),
     });
+    console.log('[Worker] Pyodide loaded');
     postStatus('loading-pyodide', 25);
 
     // 2. Load micropip + pydantic (pydantic MUST come from Pyodide's bundled version)
+    console.log('[Worker] Loading micropip + pydantic...');
     await pyodide.loadPackage(['micropip', 'pydantic']);
     postStatus('loading-ocp', 30);
 
     // 3. Set custom index for OCP.wasm (NOT on PyPI — pre-compiled WASM binaries)
+    console.log('[Worker] Setting OCP.wasm custom index...');
     const micropip = pyodide.pyimport('micropip');
     micropip.set_index_urls([
       'https://yeicor.github.io/OCP.wasm',
@@ -95,20 +99,24 @@ async function initialize(): Promise<void> {
     postStatus('loading-ocp', 35);
 
     // 4. Install lib3mf
+    console.log('[Worker] Installing lib3mf...');
     await micropip.install('lib3mf');
     postStatus('loading-ocp', 40);
 
     // 5. Install ssl (needed in WASM)
+    console.log('[Worker] Installing ssl...');
     await micropip.install('ssl');
     postStatus('loading-ocp', 45);
 
     // 6. Install ocp_vscode from Jojain's fork (no PyPerclip — fails in WASM)
+    console.log('[Worker] Installing ocp_vscode (Jojain fork)...');
     await micropip.install(
       'https://raw.githubusercontent.com/Jojain/vscode-ocp-cad-viewer/no_pyperclip/ocp_vscode-2.9.0-py3-none-any.whl',
     );
     postStatus('loading-ocp', 55);
 
     // 7. Mock py-lib3mf (build123d expects it as separate module)
+    console.log('[Worker] Mocking py-lib3mf...');
     await pyodide.runPythonAsync(`
 import micropip
 micropip.add_mock_package("py-lib3mf", "2.4.1",
@@ -117,10 +125,12 @@ micropip.add_mock_package("py-lib3mf", "2.4.1",
     postStatus('loading-build123d', 60);
 
     // 8. Install build123d + sqlite3
+    console.log('[Worker] Installing build123d + sqlite3...');
     await micropip.install(['build123d', 'sqlite3']);
     postStatus('loading-build123d', 85);
 
     // 9. Pre-import build123d and numpy into global namespace
+    console.log('[Worker] Pre-importing build123d + numpy...');
     await pyodide.runPythonAsync(`
 from build123d import *
 import numpy
@@ -128,10 +138,13 @@ import numpy
     postStatus('initializing', 95);
 
     // 10. Load the execute helper script
+    console.log('[Worker] Loading execute helper...');
     await pyodide.runPythonAsync(EXECUTE_HELPER);
+    console.log('[Worker] Engine ready');
     postStatus('ready', 100);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    console.error('[Worker] Initialization failed:', message);
     postError('error', 'INIT_FAILED', message);
   }
 }
@@ -145,6 +158,7 @@ async function handleCompile(
   quality: string,
 ): Promise<void> {
   if (!pyodide) {
+    console.warn('[Worker] Compile requested but engine not initialized');
     const msg: WorkerResponse = {
       type: 'compile-error',
       requestId,
@@ -155,6 +169,7 @@ async function handleCompile(
   }
 
   try {
+    console.log(`[Worker] Compiling (quality=${quality}, ${code.length} chars)...`);
     // Pass code and quality to the Python execute helper
     pyodide.globals.set('_user_code', code);
     pyodide.globals.set('_quality_level', quality);
@@ -164,6 +179,7 @@ async function handleCompile(
     )) as string;
 
     const result = JSON.parse(resultJson);
+    console.log(`[Worker] Compilation complete: ${result.errors.length} errors, ${result.warnings.length} warnings, ${result.executionTimeMs}ms`);
 
     const msg: WorkerResponse = {
       type: 'compile-result',
@@ -173,6 +189,7 @@ async function handleCompile(
     self.postMessage(msg);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    console.error('[Worker] Compilation failed:', message);
     const msg: WorkerResponse = {
       type: 'compile-error',
       requestId,
@@ -185,6 +202,7 @@ async function handleCompile(
 // Message handler
 self.onmessage = (e: MessageEvent<WorkerRequest>) => {
   const msg = e.data;
+  console.log(`[Worker] Received message: ${msg.type}`);
 
   switch (msg.type) {
     case 'init':

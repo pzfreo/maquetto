@@ -25,11 +25,13 @@ export function EditorPanel({ onCompile }: EditorPanelProps) {
     (editor, monaco) => {
       editorRef.current = editor;
       monacoRef.current = monaco;
+      console.log('[Editor] Monaco editor mounted');
 
       // Register Build123d completions once
       if (!completionsRegistered.current) {
         registerBuild123dCompletions(monaco);
         completionsRegistered.current = true;
+        console.log('[Editor] Build123d completions registered');
       }
 
       // Ctrl/Cmd+Enter to compile

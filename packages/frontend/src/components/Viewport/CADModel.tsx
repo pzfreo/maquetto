@@ -25,10 +25,11 @@ export function CADModel({ data }: CADModelProps) {
       data,
       '',
       (gltf) => {
+        console.log(`[Viewport] glTF loaded (${gltf.scene.children.length} objects)`);
         setScene(gltf.scene);
       },
       (error) => {
-        console.error('glTF parse error:', error);
+        console.error('[Viewport] glTF parse error:', error);
       },
     );
 

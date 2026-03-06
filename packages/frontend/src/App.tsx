@@ -21,6 +21,7 @@ export function App() {
 
   useEffect(() => {
     if (enginePhase === 'ready' && !hasAutoCompiled) {
+      console.log('[App] Engine ready — auto-compiling starter script');
       setHasAutoCompiled(true);
       triggerCompile();
     }
@@ -31,7 +32,11 @@ export function App() {
   }, [engine]);
 
   if (showFirstRun && !firstRunDismissed) {
-    return <FirstRunScreen onComplete={() => setFirstRunDismissed(true)} />;
+    console.log('[App] Showing first-run setup');
+    return <FirstRunScreen onComplete={() => {
+      console.log('[App] First-run complete');
+      setFirstRunDismissed(true);
+    }} />;
   }
 
   return (

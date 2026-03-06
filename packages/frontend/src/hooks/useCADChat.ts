@@ -30,7 +30,10 @@ export function useCADChat() {
   });
 
   const sendWithContext = (text: string) => {
-    if (!transport) return;
+    if (!transport) {
+      console.warn('[Chat] Send blocked — no provider configured');
+      return;
+    }
 
     const context = assembleContextText({
       code,
@@ -39,6 +42,8 @@ export function useCADChat() {
       cameraDescription,
       screenshotDataUrl: null,
     });
+
+    console.log(`[Chat] Sending message (${text.length} chars, ${parts.length} parts, ${selectedPartIds.length} selected)`);
 
     // Prepend context to user message
     const messageWithContext = context

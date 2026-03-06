@@ -22,6 +22,7 @@ export function createAnthropicTransport(
   credential: string,
   systemPrompt: string,
 ) {
+  console.log(`[Anthropic] Initializing Claude transport (proxy: ${ANTHROPIC_PROXY_URL})`);
   const anthropic = createAnthropic({
     apiKey: credential,
     baseURL: ANTHROPIC_PROXY_URL,
