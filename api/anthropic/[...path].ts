@@ -29,9 +29,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  // Build target URL from catch-all path segments
-  const segments = req.query.path;
-  const subPath = Array.isArray(segments) ? segments.join('/') : (segments ?? '');
+  // Extract sub-path by parsing the URL directly (more reliable than catch-all query)
+  const pathname = req.url?.split('?')[0] ?? '';
+  const subPath = pathname.replace(/^\/api\/anthropic\/?/, '');
   const url = `${ANTHROPIC_API_BASE}/${subPath}`;
 
   // Forward all request headers except hop-by-hop and Vercel internals
