@@ -3,6 +3,18 @@ import { Readable } from 'node:stream';
 
 const ANTHROPIC_API_BASE = 'https://api.anthropic.com/v1';
 
+/** Headers that should not be forwarded to the upstream API. */
+const HOP_BY_HOP = new Set([
+  'host', 'connection', 'keep-alive', 'transfer-encoding',
+  'te', 'trailer', 'upgrade', 'proxy-authorization',
+  'proxy-authenticate', 'accept-encoding',
+  // Vercel-specific headers that shouldn't be forwarded
+  'x-vercel-id', 'x-vercel-proxy-signature', 'x-vercel-proxy-signature-ts',
+  'x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto',
+  'x-real-ip', 'x-vercel-deployment-url', 'x-vercel-forwarded-for',
+  'x-middleware-invoke', 'x-invoke-path', 'x-invoke-query',
+]);
+
 /**
  * Vercel serverless proxy for the Anthropic API.
  * Forwards requests from the browser to api.anthropic.com, bypassing CORS.
@@ -22,37 +34,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const subPath = Array.isArray(segments) ? segments.join('/') : (segments ?? '');
   const url = `${ANTHROPIC_API_BASE}/${subPath}`;
 
-  // Forward only the headers Anthropic needs
-  const headers: Record<string, string> = {
-    'content-type': 'application/json',
-  };
-  const apiKey = req.headers['x-api-key'];
-  if (apiKey) {
-    headers['x-api-key'] = String(apiKey);
-    console.log(`[anthropic-proxy] API key present (${String(apiKey).slice(0, 8)}...)`);
-  } else {
-    console.log('[anthropic-proxy] WARNING: No x-api-key header');
+  // Forward all request headers except hop-by-hop and Vercel internals
+  const headers: Record<string, string> = {};
+  for (const [key, value] of Object.entries(req.headers)) {
+    if (!HOP_BY_HOP.has(key) && value != null) {
+      headers[key] = Array.isArray(value) ? value[0] : value;
+    }
   }
-  const version = req.headers['anthropic-version'];
-  if (version) headers['anthropic-version'] = String(version);
 
+  const hasApiKey = 'x-api-key' in headers;
+  console.log(`[anthropic-proxy] API key: ${hasApiKey ? `present (${headers['x-api-key'].slice(0, 10)}...)` : 'MISSING'}`);
   console.log(`[anthropic-proxy] Forwarding to: ${url}`);
-  console.log(`[anthropic-proxy] Headers: ${Object.keys(headers).join(', ')}`);
-  console.log(`[anthropic-proxy] Body size: ${JSON.stringify(req.body).length} chars`);
+  console.log(`[anthropic-proxy] Forwarded headers: ${Object.keys(headers).join(', ')}`);
+
+  const body = JSON.stringify(req.body);
+  console.log(`[anthropic-proxy] Body (${body.length} chars): ${body.slice(0, 200)}...`);
 
   try {
     const upstream = await fetch(url, {
       method: 'POST',
       headers,
-      body: JSON.stringify(req.body),
+      body,
     });
 
     console.log(`[anthropic-proxy] Upstream response: ${upstream.status} ${upstream.statusText}`);
-
-    // Log response headers for debugging
-    const responseHeaders: Record<string, string> = {};
-    upstream.headers.forEach((v, k) => { responseHeaders[k] = v; });
-    console.log(`[anthropic-proxy] Response headers: ${JSON.stringify(responseHeaders)}`);
 
     // If error, read and log the response body for diagnosis
     if (!upstream.ok) {
