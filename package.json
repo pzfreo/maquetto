@@ -1,9 +1,9 @@
 {
-  "name": "maquette",
+  "name": "maquetto",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm --filter @maquette/frontend dev",
+    "dev": "pnpm --filter @maquetto/frontend dev",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",

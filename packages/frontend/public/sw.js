@@ -4,7 +4,7 @@
  * Second visit should reach engine-ready in 3-5 seconds.
  */
 
-const CACHE_NAME = 'maquette-wasm-v1';
+const CACHE_NAME = 'maquetto-wasm-v1';
 
 const CACHE_PATTERNS = [
   'cdn.jsdelivr.net/pyodide/',

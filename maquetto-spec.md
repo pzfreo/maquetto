@@ -1,8 +1,8 @@
-# Maquette — AI-Powered Build123d CAD IDE
+# Maquetto — AI-Powered Build123d CAD IDE
 
 ## Vision
 
-Maquette is a browser-only AI-powered CAD IDE. Users write Build123d
+Maquetto is a browser-only AI-powered CAD IDE. Users write Build123d
 Python code, see real-time 3D previews, and use AI to modify designs
 through natural language with full spatial context from the viewport.
 
@@ -267,7 +267,7 @@ user setting, but default to manual for the prototype.
 
 On first visit, before the user sees the full IDE:
 
-1. Brief splash/welcome explaining what Maquette is
+1. Brief splash/welcome explaining what Maquetto is
 2. AI provider setup:
    - Primary option: "Sign in with Google" button (Gemini OAuth)
    - Secondary option: "Use Anthropic API key" with a text field

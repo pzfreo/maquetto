@@ -1,4 +1,4 @@
-import type { CADContext } from '@maquette/api-types';
+import type { CADContext } from '@maquetto/api-types';
 
 /**
  * Assembles CAD context into a text description for AI prompts.

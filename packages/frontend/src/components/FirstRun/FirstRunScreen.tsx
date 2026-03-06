@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAppStore } from '../../store';
 
-const FIRST_RUN_KEY = 'maquette:first-run-complete';
+const FIRST_RUN_KEY = 'maquetto:first-run-complete';
 
 export function useFirstRun() {
   const [isFirstRun] = useState(() => {
@@ -75,7 +75,7 @@ export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
             color: '#fff',
           }}
         >
-          Maquette
+          Maquetto
         </h1>
         <p
           style={{

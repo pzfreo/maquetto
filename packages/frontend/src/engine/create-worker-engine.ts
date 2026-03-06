@@ -4,7 +4,7 @@ import type {
   EngineStatus,
   QualityLevel,
   WorkerResponse,
-} from '@maquette/api-types';
+} from '@maquetto/api-types';
 
 interface PendingRequest {
   resolve: (result: CompileResult) => void;

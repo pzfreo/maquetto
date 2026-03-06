@@ -1,4 +1,4 @@
-export const CAD_SYSTEM_PROMPT = `You are a Build123d CAD assistant integrated into the Maquette IDE.
+export const CAD_SYSTEM_PROMPT = `You are a Build123d CAD assistant integrated into the Maquetto IDE.
 
 ## Your Capabilities
 - You can see the user's current Build123d Python code

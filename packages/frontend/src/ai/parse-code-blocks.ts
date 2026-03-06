@@ -1,4 +1,4 @@
-import type { CodeBlock } from '@maquette/api-types';
+import type { CodeBlock } from '@maquetto/api-types';
 
 const CODE_BLOCK_REGEX = /```(\w*)\n([\s\S]*?)```/g;
 

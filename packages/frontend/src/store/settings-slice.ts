@@ -1,9 +1,9 @@
 import type { StateCreator } from 'zustand';
-import type { SettingsSlice, AppStore, AIProviderConfig, QualityLevel } from '@maquette/api-types';
+import type { SettingsSlice, AppStore, AIProviderConfig, QualityLevel } from '@maquetto/api-types';
 
 const STORAGE_KEYS = {
-  aiProvider: 'maquette:ai-provider',
-  qualityLevel: 'maquette:quality-level',
+  aiProvider: 'maquetto:ai-provider',
+  qualityLevel: 'maquetto:quality-level',
 } as const;
 
 function loadAIProvider(): AIProviderConfig {

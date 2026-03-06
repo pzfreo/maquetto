@@ -1,6 +1,6 @@
 import { useCallback, useRef, useEffect } from 'react';
 import { useAppStore } from '../store';
-import type { CadEngine } from '@maquette/api-types';
+import type { CadEngine } from '@maquetto/api-types';
 
 /**
  * Provides triggerCompile() which reads code from the store,

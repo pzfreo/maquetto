@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { CadEngine, CompileResult, EngineStatus } from '@maquette/api-types';
+import type { CadEngine, CompileResult, EngineStatus } from '@maquetto/api-types';
 import { useAppStore } from '../../store';
 
 /**

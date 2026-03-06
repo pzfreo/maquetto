@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { AppStore } from '@maquette/api-types';
+import type { AppStore } from '@maquetto/api-types';
 import { createEngineSlice } from './engine-slice';
 import { createEditorSlice } from './editor-slice';
 import { createCompilationSlice } from './compilation-slice';

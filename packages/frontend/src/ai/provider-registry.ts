@@ -1,4 +1,4 @@
-import type { AIProviderConfig } from '@maquette/api-types';
+import type { AIProviderConfig } from '@maquetto/api-types';
 import { createGoogleTransport } from './transports/google-transport';
 import { createAnthropicTransport } from './transports/anthropic-transport';
 import { CAD_SYSTEM_PROMPT } from './system-prompt';

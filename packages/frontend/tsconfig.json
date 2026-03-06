@@ -4,7 +4,7 @@
     "noEmit": true,
     "paths": {
       "@/*": ["./src/*"],
-      "@maquette/api-types": ["../api-types/src/index.ts"]
+      "@maquetto/api-types": ["../api-types/src/index.ts"]
     }
   },
   "include": ["src", "../api-types/src"]

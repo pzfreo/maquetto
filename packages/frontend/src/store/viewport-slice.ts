@@ -1,5 +1,5 @@
 import type { StateCreator } from 'zustand';
-import type { ViewportSlice, AppStore } from '@maquette/api-types';
+import type { ViewportSlice, AppStore } from '@maquetto/api-types';
 
 export const createViewportSlice: StateCreator<AppStore, [], [], ViewportSlice> = (set, get) => ({
   selectedPartIds: [],

@@ -8,7 +8,7 @@
  * The UI layer never imports this directly.
  */
 
-import type { WorkerRequest, WorkerResponse, EnginePhase } from '@maquette/api-types';
+import type { WorkerRequest, WorkerResponse, EnginePhase } from '@maquetto/api-types';
 
 // Pyodide types (loaded dynamically via importScripts)
 declare function importScripts(...urls: string[]): void;

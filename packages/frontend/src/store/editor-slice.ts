@@ -1,5 +1,5 @@
 import type { StateCreator } from 'zustand';
-import type { EditorSlice, AppStore } from '@maquette/api-types';
+import type { EditorSlice, AppStore } from '@maquetto/api-types';
 
 const STARTER_CODE = `from build123d import *
 

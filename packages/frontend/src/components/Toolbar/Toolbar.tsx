@@ -40,7 +40,7 @@ export function Toolbar({ onCompile, onRetryEngine }: ToolbarProps) {
           marginRight: '8px',
         }}
       >
-        Maquette
+        Maquetto
       </span>
 
       <button

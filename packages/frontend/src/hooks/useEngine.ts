@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAppStore } from '../store';
 import { createWorkerEngine } from '../engine/create-worker-engine';
-import type { CadEngine } from '@maquette/api-types';
+import type { CadEngine } from '@maquetto/api-types';
 
 /**
  * Creates the CAD engine once and subscribes to status updates.

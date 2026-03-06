@@ -1,5 +1,5 @@
 import type { StateCreator } from 'zustand';
-import type { CompilationSlice, AppStore } from '@maquette/api-types';
+import type { CompilationSlice, AppStore } from '@maquetto/api-types';
 
 function base64ToArrayBuffer(base64: string): ArrayBuffer {
   const binary = atob(base64);

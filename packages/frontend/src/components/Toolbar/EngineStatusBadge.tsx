@@ -1,5 +1,5 @@
 import { useAppStore } from '../../store';
-import type { EnginePhase } from '@maquette/api-types';
+import type { EnginePhase } from '@maquetto/api-types';
 
 const PHASE_LABELS: Record<EnginePhase, string> = {
   idle: 'Idle',

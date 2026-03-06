@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { CadEngine, CompileResult, EngineStatus } from '@maquette/api-types';
+import type { CadEngine, CompileResult, EngineStatus } from '@maquetto/api-types';
 
 /**
  * Mock CadEngine that validates the interface contract.
