@@ -1,8 +1,9 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useRef } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { useAppStore } from '../store';
 import { createTransport } from '../ai/provider-registry';
 import { assembleContextText } from '../ai/context-assembler';
+import type { CadEngine } from '@maquetto/api-types';
 
 /**
  * A transport that never sends anything. Used when no AI provider is configured
@@ -21,16 +22,27 @@ const noopTransport = {
  * Wraps useChat with CAD context injection and provider switching.
  * Returns the same interface as useChat, plus a sendWithContext method.
  */
-export function useCADChat() {
+export function useCADChat(engine: CadEngine | null) {
   const aiProvider = useAppStore((s) => s.aiProvider);
   const code = useAppStore((s) => s.code);
   const parts = useAppStore((s) => s.parts);
   const selectedPartIds = useAppStore((s) => s.selectedPartIds);
   const cameraDescription = useAppStore((s) => s.cameraDescription);
 
+  // Stable ref to engine so compileFn doesn't change when engine becomes ready
+  const engineRef = useRef(engine);
+  engineRef.current = engine;
+
+  const compileFn = useCallback(async (codeToTest: string) => {
+    if (!engineRef.current) {
+      throw new Error('Engine not ready');
+    }
+    return engineRef.current.compile(codeToTest, 'draft');
+  }, []);
+
   const transport = useMemo(
-    () => createTransport(aiProvider),
-    [aiProvider],
+    () => createTransport(aiProvider, engineRef.current ? compileFn : null),
+    [aiProvider, compileFn],
   );
 
   const chat = useChat({

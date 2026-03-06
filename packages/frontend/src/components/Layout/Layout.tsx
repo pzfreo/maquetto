@@ -3,14 +3,16 @@ import { EditorPanel } from '../Editor/EditorPanel';
 import { ViewportPanel } from '../Viewport/ViewportPanel';
 import { ChatPanel } from '../Chat/ChatPanel';
 import { useAppStore } from '../../store';
+import type { CadEngine } from '@maquetto/api-types';
 import './Layout.css';
 
 interface LayoutProps {
   onCompile?: () => void;
   onRetryEngine?: () => void;
+  engine?: CadEngine | null;
 }
 
-export function Layout({ onCompile, onRetryEngine }: LayoutProps) {
+export function Layout({ onCompile, onRetryEngine, engine }: LayoutProps) {
   const isDiffExpanded = useAppStore((s) => s.isDiffExpanded);
 
   return (
@@ -26,7 +28,7 @@ export function Layout({ onCompile, onRetryEngine }: LayoutProps) {
               <ViewportPanel />
             </div>
             <div className="layout-panel layout-chat">
-              <ChatPanel onCompile={onCompile} />
+              <ChatPanel onCompile={onCompile} engine={engine ?? null} />
             </div>
           </>
         )}
