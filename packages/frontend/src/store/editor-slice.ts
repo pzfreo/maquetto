@@ -30,4 +30,12 @@ export const createEditorSlice: StateCreator<AppStore, [], [], EditorSlice> = (s
     set({ code, isDirty: true });
   },
   setDirty: (isDirty) => set({ isDirty }),
+  resetCode: () => {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {
+      console.warn('[Editor] Failed to clear code from localStorage:', e);
+    }
+    set({ code: STARTER_CODE, isDirty: false });
+  },
 });

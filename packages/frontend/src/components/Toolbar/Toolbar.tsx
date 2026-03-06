@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAppStore } from '../../store';
 import { EngineStatusBadge } from './EngineStatusBadge';
 import { ProviderSettingsModal } from '../Settings/ProviderSettingsModal';
@@ -13,10 +13,34 @@ export function Toolbar({ onCompile, onRetryEngine }: ToolbarProps) {
   const compilationStatus = useAppStore((s) => s.compilationStatus);
   const qualityLevel = useAppStore((s) => s.qualityLevel);
   const setQualityLevel = useAppStore((s) => s.setQualityLevel);
+  const resetCode = useAppStore((s) => s.resetCode);
+  const clearVersionHistory = useAppStore((s) => s.clearVersionHistory);
+  const clearCompilation = useAppStore((s) => s.clearCompilation);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [fileMenuOpen, setFileMenuOpen] = useState(false);
+  const fileMenuRef = useRef<HTMLDivElement>(null);
 
   const isReady = enginePhase === 'ready';
   const isCompiling = compilationStatus === 'compiling';
+
+  // Close file menu on outside click
+  useEffect(() => {
+    if (!fileMenuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (fileMenuRef.current && !fileMenuRef.current.contains(e.target as Node)) {
+        setFileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [fileMenuOpen]);
+
+  const handleNew = () => {
+    setFileMenuOpen(false);
+    resetCode();
+    clearVersionHistory();
+    clearCompilation();
+  };
 
   return (
     <div
@@ -42,6 +66,60 @@ export function Toolbar({ onCompile, onRetryEngine }: ToolbarProps) {
       >
         Maquetto
       </span>
+
+      {/* File menu */}
+      <div ref={fileMenuRef} style={{ position: 'relative' }}>
+        <button
+          onClick={() => setFileMenuOpen(!fileMenuOpen)}
+          style={{
+            padding: '4px 10px',
+            borderRadius: '4px',
+            border: '1px solid #444',
+            background: 'transparent',
+            color: '#ccc',
+            cursor: 'pointer',
+            fontSize: '13px',
+          }}
+        >
+          File
+        </button>
+        {fileMenuOpen && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              marginTop: '4px',
+              background: '#1e1e2e',
+              border: '1px solid #444',
+              borderRadius: '6px',
+              padding: '4px 0',
+              minWidth: '160px',
+              zIndex: 100,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+            }}
+          >
+            <button
+              onClick={handleNew}
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '8px 16px',
+                background: 'transparent',
+                border: 'none',
+                color: '#e0e0e0',
+                fontSize: '13px',
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#2a2a4e'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              New
+            </button>
+          </div>
+        )}
+      </div>
 
       <button
         onClick={onCompile}
