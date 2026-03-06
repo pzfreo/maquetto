@@ -1,9 +1,21 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useChat } from '@ai-sdk/react';
-import type { UIMessage } from 'ai';
 import { useAppStore } from '../store';
 import { createTransport } from '../ai/provider-registry';
 import { assembleContextText } from '../ai/context-assembler';
+
+/**
+ * A transport that never sends anything. Used when no AI provider is configured
+ * to prevent useChat from POSTing to the default /api/chat endpoint.
+ */
+const noopTransport = {
+  async sendMessages() {
+    return new ReadableStream({ start(c: ReadableStreamDefaultController) { c.close(); } });
+  },
+  async reconnectToStream() {
+    return null;
+  },
+};
 
 /**
  * Wraps useChat with CAD context injection and provider switching.
@@ -23,13 +35,11 @@ export function useCADChat() {
 
   const chat = useChat({
     id: 'cad-chat',
-    // When transport is set, use it for direct browser-to-provider streaming.
-    // When not set, override the default API endpoint to prevent 405 errors
-    // (Vercel AI SDK defaults to POSTing to /api/chat which doesn't exist).
-    ...(transport ? { transport } : { api: 'data:,' }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    transport: (transport ?? noopTransport) as any,
   });
 
-  const sendWithContext = (text: string) => {
+  const sendWithContext = useCallback((text: string) => {
     if (!transport) {
       console.warn('[Chat] Send blocked — no provider configured');
       return;
@@ -45,13 +55,12 @@ export function useCADChat() {
 
     console.log(`[Chat] Sending message (${text.length} chars, ${parts.length} parts, ${selectedPartIds.length} selected)`);
 
-    // Prepend context to user message
     const messageWithContext = context
       ? `${text}\n\n---\n${context}`
       : text;
 
     chat.sendMessage({ text: messageWithContext });
-  };
+  }, [transport, code, parts, selectedPartIds, cameraDescription, chat]);
 
   return {
     messages: chat.messages,
