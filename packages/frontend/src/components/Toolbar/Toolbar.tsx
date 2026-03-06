@@ -187,7 +187,7 @@ export function Toolbar({ onCompile, onRetryEngine }: ToolbarProps) {
       </button>
 
       <span
-        title={`Build ${__BUILD_NUMBER__} (${__COMMIT_HASH__})`}
+        title={`Commit ${__COMMIT_HASH__}`}
         style={{
           fontSize: '10px',
           color: '#555',
@@ -195,7 +195,7 @@ export function Toolbar({ onCompile, onRetryEngine }: ToolbarProps) {
           userSelect: 'none',
         }}
       >
-        b{__BUILD_NUMBER__}
+        #{__COMMIT_HASH__}
       </span>
 
       <ProviderSettingsModal
