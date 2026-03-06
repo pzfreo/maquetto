@@ -29,7 +29,21 @@ export function CADModel({ data }: CADModelProps) {
         gltf.scene.traverse((child) => {
           if (child instanceof THREE.Mesh) {
             meshCount++;
-            console.log(`[Viewport] Mesh: name="${child.name}", vertices=${child.geometry?.attributes?.position?.count ?? 0}`);
+            const geo = child.geometry;
+            const pos = geo?.attributes?.position;
+            const idx = geo?.index;
+            console.log(`[Viewport] Mesh: name="${child.name}", vertices=${pos?.count ?? 0}, indexed=${!!idx}, indices=${idx?.count ?? 0}`);
+            // Dump first vertex position to check coordinates
+            if (pos && pos.count > 0) {
+              console.log(`[Viewport]   vertex[0] = (${pos.getX(0).toFixed(4)}, ${pos.getY(0).toFixed(4)}, ${pos.getZ(0).toFixed(4)})`);
+            }
+            // Log mesh world transform
+            child.updateWorldMatrix(true, false);
+            const wp = new THREE.Vector3();
+            child.getWorldPosition(wp);
+            const ws = new THREE.Vector3();
+            child.getWorldScale(ws);
+            console.log(`[Viewport]   worldPos=(${wp.x.toFixed(3)}, ${wp.y.toFixed(3)}, ${wp.z.toFixed(3)}) worldScale=(${ws.x.toFixed(3)}, ${ws.y.toFixed(3)}, ${ws.z.toFixed(3)})`);
           }
         });
         // Log actual geometry bounds to detect scale issues
