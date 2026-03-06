@@ -190,10 +190,10 @@ Transfer the bytes as ArrayBuffer to main thread (transferable for zero-copy).
 
 ### Always Use Feature Branches and PRs
 
-- Never commit directly to main
+- Do all work as PRs. Never commit directly to main.
 - Create a feature branch for each change
 - Push changes and create a PR for review
-- **NEVER merge a PR without explicit user approval**
+- **Do not automatically merge PRs. Do not merge unless given explicit direction.**
 - Creating a PR and merging are two separate steps requiring separate user consent
 
 ### Pre-Push Checklist (MANDATORY)
