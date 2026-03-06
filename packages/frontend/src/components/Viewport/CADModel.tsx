@@ -10,8 +10,6 @@ interface CADModelProps {
 
 export function CADModel({ data }: CADModelProps) {
   const parts = useAppStore((s) => s.parts);
-  const selectedPartIds = useAppStore((s) => s.selectedPartIds);
-  const hiddenPartIds = useAppStore((s) => s.hiddenPartIds);
   const togglePartSelection = useAppStore((s) => s.togglePartSelection);
   const setSelectedPartIds = useAppStore((s) => s.setSelectedPartIds);
 
@@ -97,10 +95,13 @@ export function CADModel({ data }: CADModelProps) {
     invalidate();
   }, [scene, parts, invalidate]);
 
-  // Apply visibility and selection every frame to ensure Three.js picks it up
+  // Apply visibility and selection every frame.
+  // Read directly from Zustand store to avoid stale closure issues in R3F's render loop.
   useFrame(() => {
     const map = meshMapRef.current;
     if (map.size === 0) return;
+
+    const { hiddenPartIds, selectedPartIds } = useAppStore.getState();
 
     for (const [partId, mesh] of map) {
       mesh.visible = !hiddenPartIds.includes(partId);
