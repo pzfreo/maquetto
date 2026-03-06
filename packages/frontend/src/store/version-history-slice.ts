@@ -59,4 +59,14 @@ export const createVersionHistorySlice: StateCreator<AppStore, [], [], VersionHi
   },
 
   setDiffExpanded: (isDiffExpanded) => set({ isDiffExpanded }),
+
+  clearVersionHistory: () => {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {
+      console.warn('[VersionHistory] Failed to clear from localStorage:', e);
+    }
+    console.log('[VersionHistory] Cleared all versions');
+    set({ versions: [], selectedVersionId: null, isDiffExpanded: false });
+  },
 });

@@ -21,6 +21,7 @@ export interface EditorSlice {
   readonly isDirty: boolean;
   setCode: (code: string) => void;
   setDirty: (dirty: boolean) => void;
+  resetCode: () => void;
 }
 
 // --- Compilation Slice ---
@@ -84,6 +85,7 @@ export interface VersionHistorySlice {
   selectVersion: (id: string | null) => void;
   revertToVersion: (id: string) => void;
   setDiffExpanded: (expanded: boolean) => void;
+  clearVersionHistory: () => void;
 }
 
 // --- Combined Store ---
