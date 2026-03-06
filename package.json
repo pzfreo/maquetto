@@ -1,0 +1,16 @@
+{
+  "name": "maquetto",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter @maquetto/frontend dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint"
+  },
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=22"
+  }
+}

@@ -1,11 +1,11 @@
-# CLAUDE.md - Maquette Development Guide
+# CLAUDE.md - Maquetto Development Guide
 
 ## Project Summary
 
-**Maquette** — Browser-only AI-powered CAD IDE for Build123d. Users write Python CAD code, see real-time 3D previews, and use AI to modify designs through natural language with spatial context from the viewport.
+**Maquetto** — Browser-only AI-powered CAD IDE for Build123d. Users write Python CAD code, see real-time 3D previews, and use AI to modify designs through natural language with spatial context from the viewport.
 
 **Owner**: Paul Fremantle (pzfreo)
-**Spec**: See `maquette-spec.md` for the full product specification.
+**Spec**: See `maquetto-spec.md` for the full product specification.
 
 ## Be a Critical Design Partner
 
@@ -95,7 +95,7 @@ packages/
 
 ### 1. Types Are the Constitution
 
-The `@maquette/api-types` package is the single source of truth for ALL typed communication between layers. **No `any` in TypeScript.** If you need to change a data shape crossing a boundary:
+The `@maquetto/api-types` package is the single source of truth for ALL typed communication between layers. **No `any` in TypeScript.** If you need to change a data shape crossing a boundary:
 
 1. Edit the type in `packages/api-types/src/`
 2. `pnpm typecheck` must pass
@@ -235,9 +235,9 @@ pnpm typecheck        # TypeScript type checking
 pnpm lint             # ESLint
 
 # Individual packages
-pnpm --filter @maquette/frontend dev
-pnpm --filter @maquette/frontend test
-pnpm --filter @maquette/api-proxy dev
+pnpm --filter @maquetto/frontend dev
+pnpm --filter @maquetto/frontend test
+pnpm --filter @maquetto/api-proxy dev
 ```
 
 ## Key Principles (from spec)

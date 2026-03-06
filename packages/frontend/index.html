@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Maquetto — AI-Powered CAD IDE</title>
+    <link
+      rel="preload"
+      href="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.asm.wasm"
+      as="fetch"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.asm.js"
+      as="script"
+      crossorigin
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
