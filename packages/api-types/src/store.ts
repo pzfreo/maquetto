@@ -34,9 +34,12 @@ export interface CompilationSlice {
   readonly warnings: ReadonlyArray<string>;
   readonly gltfData: ArrayBuffer | null;
   readonly executionTimeMs: number | null;
+  /** Message queued for the AI chat (e.g. from "Ask AI to fix" button). */
+  readonly pendingChatMessage: string | null;
   setCompileResult: (result: CompileResult) => void;
   setCompilationStatus: (status: CompilationStatus) => void;
   clearCompilation: () => void;
+  setPendingChatMessage: (message: string | null) => void;
 }
 
 // --- Viewport Slice ---

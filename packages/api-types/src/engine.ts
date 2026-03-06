@@ -47,6 +47,8 @@ export interface CompileError {
   readonly message: string;
   readonly line: number | null;
   readonly column: number | null;
+  /** Full Python traceback for runtime errors. */
+  readonly traceback?: string;
 }
 
 export interface EngineError {

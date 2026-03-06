@@ -1,15 +1,35 @@
+import { useCallback } from 'react';
 import { useAppStore } from '../../store';
+import type { CompileError } from '@maquetto/api-types';
+
+function formatErrorsForChat(errors: ReadonlyArray<CompileError>): string {
+  const lines = errors.map((err) => {
+    const loc = err.line !== null ? ` (line ${err.line})` : '';
+    const detail = err.traceback ? `\n\nTraceback:\n${err.traceback}` : '';
+    return `[${err.type}]${loc}: ${err.message}${detail}`;
+  });
+  return `My code has compilation errors. Please fix them:\n\n${lines.join('\n\n')}`;
+}
 
 export function CompilationErrors() {
   const errors = useAppStore((s) => s.errors);
   const warnings = useAppStore((s) => s.warnings);
   const compilationStatus = useAppStore((s) => s.compilationStatus);
   const executionTimeMs = useAppStore((s) => s.executionTimeMs);
+  const aiProviderType = useAppStore((s) => s.aiProvider.type);
+  const setPendingChatMessage = useAppStore((s) => s.setPendingChatMessage);
+
+  const handleAskAI = useCallback(() => {
+    const message = formatErrorsForChat(errors);
+    console.log(`[Editor] Sending ${errors.length} errors to AI chat`);
+    setPendingChatMessage(message);
+  }, [errors, setPendingChatMessage]);
 
   if (compilationStatus === 'idle') return null;
 
   const hasErrors = errors.length > 0;
   const hasWarnings = warnings.length > 0;
+  const canAskAI = hasErrors && aiProviderType !== 'none';
 
   return (
     <div
@@ -51,6 +71,24 @@ export function CompilationErrors() {
           <span style={{ color: '#ffa726' }}>
             {warnings.length} warning{warnings.length !== 1 ? 's' : ''}
           </span>
+        )}
+        {canAskAI && (
+          <button
+            onClick={handleAskAI}
+            style={{
+              marginLeft: 'auto',
+              padding: '2px 8px',
+              fontSize: '11px',
+              background: '#d97706',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '3px',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            Ask AI to fix
+          </button>
         )}
       </div>
 
