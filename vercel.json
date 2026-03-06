@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "git fetch --unshallow || git fetch --depth=999999 origin main || true && pnpm build",
+  "buildCommand": "bash scripts/vercel-build.sh",
   "outputDirectory": "packages/frontend/dist",
   "installCommand": "pnpm install",
   "rewrites": [
