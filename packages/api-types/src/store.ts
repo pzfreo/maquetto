@@ -61,10 +61,36 @@ export interface SettingsSlice {
   setQualityLevel: (level: QualityLevel) => void;
 }
 
+// --- Version History Slice ---
+
+export type VersionSource = 'ai' | 'user';
+
+export interface CodeVersion {
+  readonly id: string;
+  readonly code: string;
+  readonly timestamp: number;
+  readonly source: VersionSource;
+  /** Short description: first sentence of AI text, or "Manual edit" */
+  readonly summary: string;
+  /** The user's prompt that triggered this AI response (only for source='ai') */
+  readonly prompt: string | null;
+}
+
+export interface VersionHistorySlice {
+  readonly versions: ReadonlyArray<CodeVersion>;
+  readonly selectedVersionId: string | null;
+  readonly isDiffExpanded: boolean;
+  saveVersion: (code: string, source: VersionSource, summary: string, prompt: string | null) => void;
+  selectVersion: (id: string | null) => void;
+  revertToVersion: (id: string) => void;
+  setDiffExpanded: (expanded: boolean) => void;
+}
+
 // --- Combined Store ---
 
 export type AppStore = EngineSlice &
   EditorSlice &
   CompilationSlice &
   ViewportSlice &
-  SettingsSlice;
+  SettingsSlice &
+  VersionHistorySlice;

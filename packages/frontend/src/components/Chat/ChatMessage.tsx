@@ -1,5 +1,4 @@
 import { parseCodeBlocks } from '../../ai/parse-code-blocks';
-import { CodeBlockRenderer } from './CodeBlockRenderer';
 import { PartBadge } from './PartBadge';
 import type { ReactNode } from 'react';
 
@@ -38,7 +37,7 @@ export function ChatMessage({ role, content }: ChatMessageProps) {
   // Parse code blocks from assistant messages
   const codeBlocks = isUser ? [] : parseCodeBlocks(content);
 
-  // Build rendered content
+  // Build rendered content — strip code blocks, show indicator instead
   const rendered: ReactNode[] = [];
   let lastEnd = 0;
 
@@ -53,12 +52,23 @@ export function ChatMessage({ role, content }: ChatMessageProps) {
       );
     }
 
+    // Show a small indicator instead of the code block
     rendered.push(
-      <CodeBlockRenderer
+      <div
         key={`code-${i}`}
-        code={block.code}
-        language={block.language}
-      />,
+        style={{
+          margin: '4px 0',
+          padding: '4px 10px',
+          borderRadius: '4px',
+          background: 'rgba(74, 158, 255, 0.1)',
+          border: '1px solid rgba(74, 158, 255, 0.2)',
+          fontSize: '11px',
+          color: '#4a9eff',
+          fontStyle: 'italic',
+        }}
+      >
+        Code applied to editor
+      </div>,
     );
 
     lastEnd = block.endIndex;

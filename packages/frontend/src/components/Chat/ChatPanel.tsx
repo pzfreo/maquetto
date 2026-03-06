@@ -3,6 +3,8 @@ import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { useCADChat } from '../../hooks/useCADChat';
 import { useAppStore } from '../../store';
+import { parseCodeBlocks } from '../../ai/parse-code-blocks';
+import { extractSummary } from '../../ai/extract-summary';
 
 /**
  * Extract text content from a UIMessage's parts array.
@@ -32,6 +34,9 @@ export function ChatPanel() {
   const isStreaming = status === 'streaming' || status === 'submitted';
   const pendingChatMessage = useAppStore((s) => s.pendingChatMessage);
   const setPendingChatMessage = useAppStore((s) => s.setPendingChatMessage);
+  const setCode = useAppStore((s) => s.setCode);
+  const saveVersion = useAppStore((s) => s.saveVersion);
+  const prevStatusRef = useRef(status);
 
   // Send pending messages from other panels (e.g. "Ask AI to fix" button)
   useEffect(() => {
@@ -40,6 +45,48 @@ export function ChatPanel() {
       setPendingChatMessage(null);
     }
   }, [pendingChatMessage, isConfigured, isStreaming, sendMessage, setPendingChatMessage]);
+
+  // Auto-apply: when AI finishes responding, extract code and apply to editor
+  useEffect(() => {
+    const wasStreaming = prevStatusRef.current === 'streaming' || prevStatusRef.current === 'submitted';
+    prevStatusRef.current = status;
+
+    if (wasStreaming && status === 'ready') {
+      // Find the last assistant message
+      const assistantMessages = messages.filter((m) => m.role === 'assistant');
+      const lastAssistant = assistantMessages[assistantMessages.length - 1];
+      if (!lastAssistant) return;
+
+      const fullText = getMessageText(lastAssistant.parts);
+      const codeBlocks = parseCodeBlocks(fullText);
+
+      // Find the last Python code block
+      const pythonBlocks = codeBlocks.filter(
+        (b) => b.language === 'python' || b.language === 'py' || b.language === '',
+      );
+      const lastBlock = pythonBlocks[pythonBlocks.length - 1];
+      if (!lastBlock) return;
+
+      const newCode = lastBlock.code.trim();
+      if (!newCode) return;
+
+      // Find the user prompt that triggered this response
+      const userMessages = messages.filter((m) => m.role === 'user');
+      const lastUserMsg = userMessages[userMessages.length - 1];
+      const prompt = lastUserMsg ? getMessageText(lastUserMsg.parts) : null;
+      // Strip context suffix appended by sendWithContext
+      const cleanPrompt = prompt?.split('\n\n---\n')[0] ?? null;
+
+      // Save current code as a version before replacing
+      const currentCode = useAppStore.getState().code;
+      const summary = extractSummary(fullText);
+      saveVersion(currentCode, 'ai', summary, cleanPrompt);
+
+      // Apply the new code
+      console.log(`[Chat] Auto-applying code (${newCode.length} chars)`);
+      setCode(newCode);
+    }
+  }, [status, messages, setCode, saveVersion]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {

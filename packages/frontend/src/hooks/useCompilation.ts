@@ -19,7 +19,13 @@ export function useCompilation(engine: CadEngine | null) {
       return;
     }
 
-    const { code, qualityLevel } = useAppStore.getState();
+    const { code, isDirty, qualityLevel, saveVersion } = useAppStore.getState();
+
+    // Save a user version if the code was modified
+    if (isDirty) {
+      saveVersion(code, 'user', 'Manual edit', null);
+    }
+
     console.log(`[Compile] Starting (quality=${qualityLevel}, ${code.length} chars)`);
     useAppStore.getState().setCompilationStatus('compiling');
 
