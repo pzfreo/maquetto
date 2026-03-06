@@ -23,7 +23,10 @@ export function useCADChat() {
 
   const chat = useChat({
     id: 'cad-chat',
-    ...(transport ? { transport } : {}),
+    // When transport is set, use it for direct browser-to-provider streaming.
+    // When not set, override the default API endpoint to prevent 405 errors
+    // (Vercel AI SDK defaults to POSTing to /api/chat which doesn't exist).
+    ...(transport ? { transport } : { api: 'data:,' }),
   });
 
   const sendWithContext = (text: string) => {

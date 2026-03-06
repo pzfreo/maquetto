@@ -4,6 +4,9 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    modulePreload: false,
+  },
   server: {
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin',
