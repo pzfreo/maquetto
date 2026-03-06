@@ -290,14 +290,19 @@ def _execute_and_export(code_str, quality_level):
             if frame.filename == '<string>':
                 line_no = frame.lineno
                 break
+        # Include full traceback for debugging
+        full_tb = traceback.format_exc()
+        error_msg = f'{type(e).__name__}: {e}'
+        print(f'[Worker] Runtime error at line {line_no}:\\n{full_tb}')
         return json.dumps({
             'gltfBase64': '',
             'parts': [],
             'errors': [{
                 'type': 'runtime',
-                'message': str(e),
+                'message': error_msg,
                 'line': line_no,
                 'column': None,
+                'traceback': full_tb,
             }],
             'warnings': [],
             'executionTimeMs': round(elapsed),

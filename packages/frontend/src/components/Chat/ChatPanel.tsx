@@ -2,6 +2,7 @@ import { useRef, useEffect } from 'react';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { useCADChat } from '../../hooks/useCADChat';
+import { useAppStore } from '../../store';
 
 /**
  * Extract text content from a UIMessage's parts array.
@@ -29,6 +30,16 @@ export function ChatPanel() {
   } = useCADChat();
 
   const isStreaming = status === 'streaming' || status === 'submitted';
+  const pendingChatMessage = useAppStore((s) => s.pendingChatMessage);
+  const setPendingChatMessage = useAppStore((s) => s.setPendingChatMessage);
+
+  // Send pending messages from other panels (e.g. "Ask AI to fix" button)
+  useEffect(() => {
+    if (pendingChatMessage && isConfigured && !isStreaming) {
+      sendMessage(pendingChatMessage);
+      setPendingChatMessage(null);
+    }
+  }, [pendingChatMessage, isConfigured, isStreaming, sendMessage, setPendingChatMessage]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
