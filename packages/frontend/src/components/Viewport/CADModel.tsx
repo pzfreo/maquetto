@@ -46,12 +46,17 @@ export function CADModel({ data }: CADModelProps) {
   }, [data]);
 
   // Apply per-part materials and selection highlighting
+  // Build123d's export_gltf names meshes "COMPOUND", "COMPOUND_1", etc.
+  // rather than our part IDs ("@1", "@2"), so we match by fallback.
   useEffect(() => {
     if (!scene) return;
 
+    // Default to first part's color for all unmatched meshes
+    const defaultPart = parts[0];
+
     scene.traverse((child) => {
       if (child instanceof THREE.Mesh) {
-        const partMeta = parts.find((p) => p.id === child.name);
+        const partMeta = parts.find((p) => p.id === child.name) ?? defaultPart;
         if (partMeta) {
           const isSelected = selectedPartIds.includes(partMeta.id);
           child.material = new THREE.MeshStandardMaterial({
@@ -87,16 +92,14 @@ export function CADModel({ data }: CADModelProps) {
       );
 
       if (intersects.length > 0) {
-        let mesh = intersects[0]!.object;
-        // Walk up to find named mesh
-        while (mesh && !mesh.name.startsWith('@')) {
-          mesh = mesh.parent as THREE.Object3D;
-        }
-        if (mesh?.name) {
+        const hitMesh = intersects[0]!.object;
+        // Find which part this mesh belongs to by matching name or defaulting to first part
+        const partMeta = parts.find((p) => p.id === hitMesh.name) ?? parts[0];
+        if (partMeta) {
           if (event.shiftKey) {
-            togglePartSelection(mesh.name);
+            togglePartSelection(partMeta.id);
           } else {
-            setSelectedPartIds([mesh.name]);
+            setSelectedPartIds([partMeta.id]);
           }
         }
       } else if (!event.shiftKey) {
