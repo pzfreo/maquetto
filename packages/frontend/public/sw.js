@@ -15,10 +15,12 @@ const CACHE_PATTERNS = [
 ];
 
 self.addEventListener('install', () => {
+  console.log('[SW] Installing, skipping wait');
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
+  console.log('[SW] Activating, claiming clients');
   event.waitUntil(self.clients.claim());
 });
 
@@ -30,16 +32,24 @@ self.addEventListener('fetch', (event) => {
 
   event.respondWith(
     caches.match(event.request).then((cached) => {
-      if (cached) return cached;
+      if (cached) {
+        console.log('[SW] Cache hit:', url);
+        return cached;
+      }
 
+      console.log('[SW] Cache miss, fetching:', url);
       return fetch(event.request).then((response) => {
         if (response.ok) {
           const clone = response.clone();
           caches
             .open(CACHE_NAME)
-            .then((cache) => cache.put(event.request, clone));
+            .then((cache) => cache.put(event.request, clone))
+            .catch((err) => console.error('[SW] Cache write failed:', url, err));
         }
         return response;
+      }).catch((err) => {
+        console.error('[SW] Fetch failed:', url, err);
+        throw err;
       });
     }),
   );

@@ -9,10 +9,15 @@ const STORAGE_KEYS = {
 function loadAIProvider(): AIProviderConfig {
   try {
     const stored = localStorage.getItem(STORAGE_KEYS.aiProvider);
-    if (stored) return JSON.parse(stored) as AIProviderConfig;
-  } catch {
-    // ignore
+    if (stored) {
+      const parsed = JSON.parse(stored) as AIProviderConfig;
+      console.log(`[Settings] Loaded AI provider: ${parsed.type}`);
+      return parsed;
+    }
+  } catch (e) {
+    console.warn('[Settings] Failed to load AI provider from localStorage:', e);
   }
+  console.log('[Settings] No AI provider configured');
   return { type: 'none' };
 }
 
@@ -27,11 +32,13 @@ export const createSettingsSlice: StateCreator<AppStore, [], [], SettingsSlice> 
   qualityLevel: loadQualityLevel(),
 
   setAIProvider: (aiProvider) => {
+    console.log(`[Settings] Saving AI provider: ${aiProvider.type}`);
     localStorage.setItem(STORAGE_KEYS.aiProvider, JSON.stringify(aiProvider));
     set({ aiProvider });
   },
 
   setQualityLevel: (qualityLevel) => {
+    console.log(`[Settings] Saving quality level: ${qualityLevel}`);
     localStorage.setItem(STORAGE_KEYS.qualityLevel, qualityLevel);
     set({ qualityLevel });
   },

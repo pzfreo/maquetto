@@ -8,10 +8,11 @@ export function PartLabels() {
     <>
       {parts.map((part) => {
         const bb = part.boundingBox;
+        // Build123d uses Z-up, Three.js/glTF uses Y-up: swap Y and Z
         const centroid: [number, number, number] = [
           (bb.min[0] + bb.max[0]) / 2,
-          (bb.min[1] + bb.max[1]) / 2,
           (bb.min[2] + bb.max[2]) / 2,
+          (bb.min[1] + bb.max[1]) / 2,
         ];
 
         const [r, g, b] = part.color;

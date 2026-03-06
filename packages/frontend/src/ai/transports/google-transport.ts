@@ -9,6 +9,7 @@ export function createGoogleTransport(
   credential: string,
   systemPrompt: string,
 ) {
+  console.log('[Google] Initializing Gemini transport (model: gemini-2.0-flash)');
   const google = createGoogleGenerativeAI({ apiKey: credential });
   const agent = new ToolLoopAgent({
     model: google('gemini-2.0-flash'),

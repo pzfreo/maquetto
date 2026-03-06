@@ -12,6 +12,7 @@ export function useEngine(): CadEngine | null {
   const [, forceRender] = useState(0);
 
   useEffect(() => {
+    console.log('[App] Creating CAD engine...');
     const engine = createWorkerEngine();
     engineRef.current = engine;
     forceRender((n) => n + 1);
@@ -21,6 +22,7 @@ export function useEngine(): CadEngine | null {
     });
 
     return () => {
+      console.log('[App] Disposing CAD engine');
       unsubscribe();
       engine.dispose();
       engineRef.current = null;

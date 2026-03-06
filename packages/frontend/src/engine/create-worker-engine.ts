@@ -16,6 +16,7 @@ interface PendingRequest {
  * All Worker/postMessage details are encapsulated here.
  */
 export function createWorkerEngine(): CadEngine {
+  console.log('[Engine] Creating Web Worker...');
   const worker = new Worker(new URL('./cad-worker.ts', import.meta.url), {
     type: 'module',
   });
@@ -28,17 +29,23 @@ export function createWorkerEngine(): CadEngine {
 
     switch (msg.type) {
       case 'status':
+        console.log(`[Engine] Status: ${msg.status.phase} (${msg.status.progress}%)`);
+        if (msg.status.error) {
+          console.error(`[Engine] Error: ${msg.status.error.code} — ${msg.status.error.message}`);
+        }
         for (const cb of listeners) {
           cb(msg.status);
         }
         break;
 
       case 'compile-result':
+        console.log(`[Engine] Compile result received: ${msg.result.parts.length} parts, ${msg.result.errors.length} errors`);
         pending.get(msg.requestId)?.resolve(msg.result);
         pending.delete(msg.requestId);
         break;
 
       case 'compile-error':
+        console.error(`[Engine] Compile error: ${msg.error.message}`);
         pending.get(msg.requestId)?.resolve({
           gltfBase64: '',
           parts: [],
@@ -58,7 +65,12 @@ export function createWorkerEngine(): CadEngine {
     }
   };
 
+  worker.onerror = (e) => {
+    console.error('[Engine] Worker error:', e.message);
+  };
+
   // Start initialization
+  console.log('[Engine] Sending init message to worker...');
   worker.postMessage({
     type: 'init',
     requestId: crypto.randomUUID(),
@@ -74,6 +86,7 @@ export function createWorkerEngine(): CadEngine {
 
     compile(code: string, quality: QualityLevel): Promise<CompileResult> {
       const requestId = crypto.randomUUID();
+      console.log(`[Engine] Requesting compile (quality=${quality}, ${code.length} chars)`);
       return new Promise<CompileResult>((resolve) => {
         pending.set(requestId, { resolve });
         worker.postMessage({ type: 'compile', requestId, code, quality });
@@ -81,7 +94,7 @@ export function createWorkerEngine(): CadEngine {
     },
 
     retry(): void {
-      // Re-send init to restart the loading sequence
+      console.log('[Engine] Retrying initialization...');
       worker.postMessage({
         type: 'init',
         requestId: crypto.randomUUID(),
@@ -89,6 +102,7 @@ export function createWorkerEngine(): CadEngine {
     },
 
     dispose(): void {
+      console.log('[Engine] Disposing worker');
       worker.terminate();
       listeners.clear();
       pending.clear();
