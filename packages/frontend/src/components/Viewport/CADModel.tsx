@@ -32,7 +32,12 @@ export function CADModel({ data }: CADModelProps) {
             console.log(`[Viewport] Mesh: name="${child.name}", vertices=${child.geometry?.attributes?.position?.count ?? 0}`);
           }
         });
+        // Log actual geometry bounds to detect scale issues
+        const box = new THREE.Box3().setFromObject(gltf.scene);
+        const size = new THREE.Vector3();
+        box.getSize(size);
         console.log(`[Viewport] glTF loaded: ${gltf.scene.children.length} children, ${meshCount} meshes`);
+        console.log(`[Viewport] Scene bounds: min=(${box.min.x.toFixed(3)}, ${box.min.y.toFixed(3)}, ${box.min.z.toFixed(3)}) max=(${box.max.x.toFixed(3)}, ${box.max.y.toFixed(3)}, ${box.max.z.toFixed(3)}) size=(${size.x.toFixed(3)}, ${size.y.toFixed(3)}, ${size.z.toFixed(3)})`);
         setScene(gltf.scene);
       },
       (error) => {
