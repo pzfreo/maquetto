@@ -16,11 +16,15 @@ function getMessageText(parts: ReadonlyArray<{ type: string; text?: string }>): 
     .join('');
 }
 
+interface ChatPanelProps {
+  onCompile?: () => void;
+}
+
 /**
  * Chat panel component.
  * Uses Vercel AI SDK's useChat via DirectChatTransport for streaming.
  */
-export function ChatPanel() {
+export function ChatPanel({ onCompile }: ChatPanelProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const {
     messages,
@@ -82,12 +86,13 @@ export function ChatPanel() {
       const summary = extractSummary(fullText);
       saveVersion(currentCode, 'ai', summary, cleanPrompt);
 
-      // Apply the new code and clear dirty flag (version already saved)
+      // Apply the new code, clear dirty flag (version already saved), and compile
       console.log(`[Chat] Auto-applying code (${newCode.length} chars)`);
       setCode(newCode);
       useAppStore.getState().setDirty(false);
+      onCompile?.();
     }
-  }, [status, messages, setCode, saveVersion]);
+  }, [status, messages, setCode, saveVersion, onCompile]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {

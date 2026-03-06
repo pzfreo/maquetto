@@ -26,7 +26,7 @@ export function Layout({ onCompile, onRetryEngine }: LayoutProps) {
               <ViewportPanel />
             </div>
             <div className="layout-panel layout-chat">
-              <ChatPanel />
+              <ChatPanel onCompile={onCompile} />
             </div>
           </>
         )}
