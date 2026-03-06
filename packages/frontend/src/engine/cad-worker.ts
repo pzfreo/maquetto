@@ -96,37 +96,38 @@ async function initialize(): Promise<void> {
 
     // 4. Install lib3mf
     await micropip.install('lib3mf');
+    postStatus('loading-ocp', 40);
+
+    // 5. Install ssl (needed in WASM)
+    await micropip.install('ssl');
     postStatus('loading-ocp', 45);
 
-    // 5. Mock py-lib3mf (build123d expects it as separate module)
+    // 6. Install ocp_vscode from Jojain's fork (no PyPerclip — fails in WASM)
+    await micropip.install(
+      'https://raw.githubusercontent.com/Jojain/vscode-ocp-cad-viewer/no_pyperclip/ocp_vscode-2.9.0-py3-none-any.whl',
+    );
+    postStatus('loading-ocp', 55);
+
+    // 7. Mock py-lib3mf (build123d expects it as separate module)
     await pyodide.runPythonAsync(`
 import micropip
 micropip.add_mock_package("py-lib3mf", "2.4.1",
     modules={"py_lib3mf": "from lib3mf import *"})
 `);
-    postStatus('loading-ocp', 50);
-
-    // 6. Install ocp_vscode from Jojain's fork (no PyPerclip — fails in WASM)
-    await micropip.install(
-      'https://raw.githubusercontent.com/Jojain/vscode-ocp-cad-viewer/no_pyperclip/dist/ocp_vscode-2.5.3-py3-none-any.whl',
-    );
     postStatus('loading-build123d', 60);
 
-    // 7. Install build123d + sqlite3
-    await micropip.install('build123d');
-    postStatus('loading-build123d', 80);
+    // 8. Install build123d + sqlite3
+    await micropip.install(['build123d', 'sqlite3']);
+    postStatus('loading-build123d', 85);
 
-    await micropip.install('sqlite3');
-    postStatus('initializing', 85);
-
-    // 8. Pre-import build123d and numpy into global namespace
+    // 9. Pre-import build123d and numpy into global namespace
     await pyodide.runPythonAsync(`
 from build123d import *
 import numpy
 `);
     postStatus('initializing', 95);
 
-    // 9. Load the execute helper script
+    // 10. Load the execute helper script
     await pyodide.runPythonAsync(EXECUTE_HELPER);
     postStatus('ready', 100);
   } catch (err) {
