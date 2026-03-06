@@ -3,16 +3,15 @@ import { Readable } from 'node:stream';
 
 const ANTHROPIC_API_BASE = 'https://api.anthropic.com/v1';
 
-/** Headers that should not be forwarded to the upstream API. */
-const HOP_BY_HOP = new Set([
-  'host', 'connection', 'keep-alive', 'transfer-encoding',
-  'te', 'trailer', 'upgrade', 'proxy-authorization',
-  'proxy-authenticate', 'accept-encoding',
-  // Vercel-specific headers that shouldn't be forwarded
-  'x-vercel-id', 'x-vercel-proxy-signature', 'x-vercel-proxy-signature-ts',
-  'x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto',
-  'x-real-ip', 'x-vercel-deployment-url', 'x-vercel-forwarded-for',
-  'x-middleware-invoke', 'x-invoke-path', 'x-invoke-query',
+/** Only forward headers that Anthropic's API actually needs.
+ *  Forwarding browser headers (origin, sec-fetch-*, etc.) causes Anthropic
+ *  to treat the request as a direct browser call and require the
+ *  'anthropic-dangerous-direct-browser-access' header. */
+const ALLOWED_HEADERS = new Set([
+  'content-type',
+  'x-api-key',
+  'anthropic-version',
+  'anthropic-beta',
 ]);
 
 /**
@@ -34,10 +33,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const subPath = pathname.replace(/^\/api\/anthropic\/?/, '');
   const url = `${ANTHROPIC_API_BASE}/${subPath}`;
 
-  // Forward all request headers except hop-by-hop and Vercel internals
+  // Forward only the headers Anthropic needs (no browser headers)
   const headers: Record<string, string> = {};
   for (const [key, value] of Object.entries(req.headers)) {
-    if (!HOP_BY_HOP.has(key) && value != null) {
+    if (ALLOWED_HEADERS.has(key) && value != null) {
       headers[key] = Array.isArray(value) ? value[0] : value;
     }
   }
