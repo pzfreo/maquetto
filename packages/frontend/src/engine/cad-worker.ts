@@ -179,7 +179,7 @@ async function handleCompile(
     )) as string;
 
     const result = JSON.parse(resultJson);
-    console.log(`[Worker] Compilation complete: ${result.errors.length} errors, ${result.warnings.length} warnings, ${result.executionTimeMs}ms`);
+    console.log(`[Worker] Compilation complete: ${result.errors.length} errors, ${result.warnings.length} warnings, ${result.parts.length} parts, glTF=${result.gltfBase64.length} chars, ${result.executionTimeMs}ms`);
 
     const msg: WorkerResponse = {
       type: 'compile-result',
@@ -309,11 +309,14 @@ def _execute_and_export(code_str, quality_level):
         if name.startswith('_'):
             continue
         if isinstance(obj, (Shape, Compound, Part, Sketch)):
+            print(f'[export] Found shape: {name} ({type(obj).__name__})')
             shapes.append((name, obj))
         # Also check for BuildPart context manager results
         elif hasattr(obj, 'part') and isinstance(getattr(obj, 'part', None), (Shape, Part)):
+            print(f'[export] Found BuildPart result: {name}')
             shapes.append((name, obj.part))
         elif hasattr(obj, 'sketch') and isinstance(getattr(obj, 'sketch', None), (Shape, Sketch)):
+            print(f'[export] Found BuildSketch result: {name}')
             shapes.append((name, obj.sketch))
 
     if not shapes:
@@ -377,6 +380,7 @@ def _execute_and_export(code_str, quality_level):
         else:
             assembly = Compound(children=shape_objects)
 
+        print(f'[export] Exporting glTF (linear_defl={linear_defl}, angular_defl={angular_defl})...')
         export_gltf(
             assembly,
             '/tmp/output.glb',
@@ -387,6 +391,7 @@ def _execute_and_export(code_str, quality_level):
 
         with open('/tmp/output.glb', 'rb') as f:
             gltf_bytes = f.read()
+        print(f'[export] glTF file size: {len(gltf_bytes)} bytes')
         gltf_base64 = base64.b64encode(gltf_bytes).decode('ascii')
     except Exception as e:
         elapsed = (time.time() - start_time) * 1000

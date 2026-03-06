@@ -3,9 +3,7 @@ import type { EditorSlice, AppStore } from '@maquetto/api-types';
 
 const STARTER_CODE = `from build123d import *
 
-with BuildPart() as part:
-    Box(50, 40, 30)
-    Fillet(*part.edges(), radius=3)
+result = Box(50, 40, 30)
 `;
 
 export const createEditorSlice: StateCreator<AppStore, [], [], EditorSlice> = (set) => ({

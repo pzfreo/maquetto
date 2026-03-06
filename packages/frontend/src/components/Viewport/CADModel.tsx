@@ -25,7 +25,14 @@ export function CADModel({ data }: CADModelProps) {
       data,
       '',
       (gltf) => {
-        console.log(`[Viewport] glTF loaded (${gltf.scene.children.length} objects)`);
+        let meshCount = 0;
+        gltf.scene.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            meshCount++;
+            console.log(`[Viewport] Mesh: name="${child.name}", vertices=${child.geometry?.attributes?.position?.count ?? 0}`);
+          }
+        });
+        console.log(`[Viewport] glTF loaded: ${gltf.scene.children.length} children, ${meshCount} meshes`);
         setScene(gltf.scene);
       },
       (error) => {
