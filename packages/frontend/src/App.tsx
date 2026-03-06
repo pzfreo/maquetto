@@ -40,6 +40,6 @@ export function App() {
   }
 
   return (
-    <Layout onCompile={triggerCompile} onRetryEngine={handleRetryEngine} />
+    <Layout onCompile={triggerCompile} onRetryEngine={handleRetryEngine} engine={engine} />
   );
 }

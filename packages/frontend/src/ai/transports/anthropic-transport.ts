@@ -1,5 +1,6 @@
 import { DirectChatTransport, ToolLoopAgent } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { createTestCodeTool, type CompileFn } from '../tools/test-code-tool';
 
 /**
  * The URL of the edge proxy for Anthropic API requests.
@@ -21,15 +22,22 @@ const ANTHROPIC_PROXY_URL =
 export function createAnthropicTransport(
   credential: string,
   systemPrompt: string,
+  compileFn: CompileFn | null,
 ) {
   console.log(`[Anthropic] Initializing Claude transport (proxy: ${ANTHROPIC_PROXY_URL})`);
   const anthropic = createAnthropic({
     apiKey: credential,
     baseURL: ANTHROPIC_PROXY_URL,
   });
+
+  const tools = compileFn
+    ? { test_code: createTestCodeTool(compileFn) }
+    : undefined;
+
   const agent = new ToolLoopAgent({
     model: anthropic('claude-sonnet-4-20250514'),
     instructions: systemPrompt,
+    ...(tools && { tools, maxSteps: 5 }),
   });
 
   return new DirectChatTransport({ agent });

@@ -1,10 +1,11 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useMemo } from 'react';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { useCADChat } from '../../hooks/useCADChat';
 import { useAppStore } from '../../store';
 import { parseCodeBlocks } from '../../ai/parse-code-blocks';
 import { extractSummary } from '../../ai/extract-summary';
+import type { CadEngine } from '@maquetto/api-types';
 
 /**
  * Extract text content from a UIMessage's parts array.
@@ -16,15 +17,42 @@ function getMessageText(parts: ReadonlyArray<{ type: string; text?: string }>): 
     .join('');
 }
 
+interface ToolInvocationInfo {
+  count: number;
+  latestState: string;
+  hasError: boolean;
+}
+
+/**
+ * Extract tool invocation info from the latest assistant message parts.
+ */
+function getToolActivity(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  parts: ReadonlyArray<Record<string, any>>,
+): ToolInvocationInfo | null {
+  const toolParts = parts.filter(
+    (p) => typeof p.type === 'string' && (p.type.startsWith('tool-') || p.type === 'dynamic-tool'),
+  );
+  if (toolParts.length === 0) return null;
+
+  const latest = toolParts[toolParts.length - 1]!;
+  return {
+    count: toolParts.length,
+    latestState: latest.state ?? 'unknown',
+    hasError: latest.state === 'output-available' && latest.output?.success === false,
+  };
+}
+
 interface ChatPanelProps {
   onCompile?: () => void;
+  engine: CadEngine | null;
 }
 
 /**
  * Chat panel component.
  * Uses Vercel AI SDK's useChat via DirectChatTransport for streaming.
  */
-export function ChatPanel({ onCompile }: ChatPanelProps) {
+export function ChatPanel({ onCompile, engine }: ChatPanelProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const {
     messages,
@@ -33,7 +61,7 @@ export function ChatPanel({ onCompile }: ChatPanelProps) {
     sendMessage,
     stop,
     isConfigured,
-  } = useCADChat();
+  } = useCADChat(engine);
 
   const isStreaming = status === 'streaming' || status === 'submitted';
   const pendingChatMessage = useAppStore((s) => s.pendingChatMessage);
@@ -41,6 +69,16 @@ export function ChatPanel({ onCompile }: ChatPanelProps) {
   const setCode = useAppStore((s) => s.setCode);
   const saveVersion = useAppStore((s) => s.saveVersion);
   const prevStatusRef = useRef(status);
+
+  // Detect tool activity in the current streaming message
+  const toolActivity = useMemo(() => {
+    if (!isStreaming) return null;
+    const assistantMessages = messages.filter((m) => m.role === 'assistant');
+    const lastAssistant = assistantMessages[assistantMessages.length - 1];
+    if (!lastAssistant) return null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return getToolActivity(lastAssistant.parts as ReadonlyArray<Record<string, any>>);
+  }, [isStreaming, messages]);
 
   // Send pending messages from other panels (e.g. "Ask AI to fix" button)
   useEffect(() => {
@@ -189,8 +227,53 @@ export function ChatPanel({ onCompile }: ChatPanelProps) {
               content={getMessageText(msg.parts)}
             />
           ))}
+
+        {/* Tool activity indicator */}
+        {toolActivity && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 14px',
+              borderRadius: '8px',
+              background: '#1a1a35',
+              border: '1px solid #2a2a4e',
+              fontSize: '12px',
+              color: '#8b8bbb',
+              margin: '4px 0',
+            }}
+          >
+            <span
+              style={{
+                display: 'inline-block',
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: toolActivity.hasError ? '#f4a836' : '#4a9eff',
+                animation: 'pulse 1.5s ease-in-out infinite',
+              }}
+            />
+            <span>
+              {toolActivity.hasError
+                ? `Code has errors — AI is fixing (attempt ${toolActivity.count})…`
+                : toolActivity.latestState === 'output-available'
+                  ? `Code compiled successfully ✓`
+                  : `Testing code${toolActivity.count > 1 ? ` (attempt ${toolActivity.count})` : ''}…`}
+            </span>
+          </div>
+        )}
+
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Pulse animation */}
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
+      `}</style>
 
       {/* Input */}
       <ChatInput
