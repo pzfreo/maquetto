@@ -16,6 +16,9 @@ describe('AppStore', () => {
       executionTimeMs: null,
       selectedPartIds: [],
       cameraDescription: 'default view',
+      versions: [],
+      selectedVersionId: null,
+      isDiffExpanded: false,
     });
   });
 

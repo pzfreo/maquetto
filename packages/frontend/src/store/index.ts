@@ -5,6 +5,7 @@ import { createEditorSlice } from './editor-slice';
 import { createCompilationSlice } from './compilation-slice';
 import { createViewportSlice } from './viewport-slice';
 import { createSettingsSlice } from './settings-slice';
+import { createVersionHistorySlice } from './version-history-slice';
 
 export const useAppStore = create<AppStore>()((...args) => ({
   ...createEngineSlice(...args),
@@ -12,4 +13,5 @@ export const useAppStore = create<AppStore>()((...args) => ({
   ...createCompilationSlice(...args),
   ...createViewportSlice(...args),
   ...createSettingsSlice(...args),
+  ...createVersionHistorySlice(...args),
 }));

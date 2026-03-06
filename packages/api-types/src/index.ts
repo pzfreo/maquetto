@@ -24,11 +24,14 @@ export type {
 
 export type {
   AppStore,
+  CodeVersion,
   CompilationSlice,
   CompilationStatus,
   EditorSlice,
   EngineSlice,
   SettingsSlice,
+  VersionHistorySlice,
+  VersionSource,
   ViewportSlice,
 } from './store';
 
