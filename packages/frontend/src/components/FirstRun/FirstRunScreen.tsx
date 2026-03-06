@@ -22,20 +22,21 @@ interface FirstRunScreenProps {
 
 export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
   const setAIProvider = useAppStore((s) => s.setAIProvider);
-  const [showKeyInput, setShowKeyInput] = useState(false);
-  const [apiKey, setApiKey] = useState('');
+  const [showGeminiInput, setShowGeminiInput] = useState(false);
+  const [showAnthropicInput, setShowAnthropicInput] = useState(false);
+  const [geminiKey, setGeminiKey] = useState('');
+  const [anthropicKey, setAnthropicKey] = useState('');
 
-  const handleGoogleSignIn = () => {
-    // TODO: Implement Google OAuth in Phase 7
-    // For now, set provider type to trigger the flow
-    setAIProvider({ type: 'google', credential: '' });
+  const handleGeminiKey = () => {
+    if (!geminiKey.trim()) return;
+    setAIProvider({ type: 'google', credential: geminiKey.trim() });
     completeFirstRun();
     onComplete();
   };
 
   const handleAnthropicKey = () => {
-    if (!apiKey.trim()) return;
-    setAIProvider({ type: 'anthropic', credential: apiKey.trim() });
+    if (!anthropicKey.trim()) return;
+    setAIProvider({ type: 'anthropic', credential: anthropicKey.trim() });
     completeFirstRun();
     onComplete();
   };
@@ -93,35 +94,85 @@ export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {/* Google Sign-In (Primary) */}
-          <button
-            onClick={handleGoogleSignIn}
-            style={{
-              padding: '14px 24px',
-              borderRadius: '8px',
-              border: 'none',
-              background: '#4285f4',
-              color: '#fff',
-              fontSize: '15px',
-              fontWeight: 500,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '10px',
-            }}
-          >
-            Sign in with Google
-          </button>
-          <p style={{ fontSize: '11px', color: '#666', margin: '0' }}>
-            Uses Gemini AI — free tier available, no API key needed
-          </p>
+          {/* Google Gemini (Primary) */}
+          <div>
+            {!showGeminiInput ? (
+              <button
+                onClick={() => setShowGeminiInput(true)}
+                style={{
+                  padding: '14px 24px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: '#4285f4',
+                  color: '#fff',
+                  fontSize: '15px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  width: '100%',
+                }}
+              >
+                Use Google Gemini
+              </button>
+            ) : (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                }}
+              >
+                <input
+                  type="password"
+                  value={geminiKey}
+                  onChange={(e) => setGeminiKey(e.target.value)}
+                  placeholder="Gemini API key..."
+                  autoFocus
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: '6px',
+                    border: '1px solid #4285f4',
+                    background: '#1e1e2e',
+                    color: '#e0e0e0',
+                    fontSize: '14px',
+                    fontFamily: 'monospace',
+                    outline: 'none',
+                  }}
+                />
+                <button
+                  onClick={handleGeminiKey}
+                  disabled={!geminiKey.trim()}
+                  style={{
+                    padding: '10px 20px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: geminiKey.trim() ? '#4285f4' : '#333',
+                    color: geminiKey.trim() ? '#fff' : '#888',
+                    fontSize: '14px',
+                    cursor: geminiKey.trim() ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  Connect
+                </button>
+              </div>
+            )}
+            <p style={{ fontSize: '11px', color: '#666', margin: '4px 0 0' }}>
+              Free API key from{' '}
+              <a
+                href="https://aistudio.google.com/apikey"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: '#4a9eff' }}
+              >
+                aistudio.google.com
+              </a>
+            </p>
+          </div>
 
           {/* Anthropic (Secondary) */}
           <div style={{ marginTop: '16px' }}>
-            {!showKeyInput ? (
+            {!showAnthropicInput ? (
               <button
-                onClick={() => setShowKeyInput(true)}
+                onClick={() => setShowAnthropicInput(true)}
                 style={{
                   padding: '12px 24px',
                   borderRadius: '8px',
@@ -145,9 +196,10 @@ export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
               >
                 <input
                   type="password"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
+                  value={anthropicKey}
+                  onChange={(e) => setAnthropicKey(e.target.value)}
                   placeholder="sk-ant-api..."
+                  autoFocus
                   style={{
                     padding: '10px 14px',
                     borderRadius: '6px',
@@ -161,15 +213,15 @@ export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
                 />
                 <button
                   onClick={handleAnthropicKey}
-                  disabled={!apiKey.trim()}
+                  disabled={!anthropicKey.trim()}
                   style={{
                     padding: '10px 20px',
                     borderRadius: '6px',
                     border: 'none',
-                    background: apiKey.trim() ? '#d97706' : '#333',
-                    color: apiKey.trim() ? '#fff' : '#888',
+                    background: anthropicKey.trim() ? '#d97706' : '#333',
+                    color: anthropicKey.trim() ? '#fff' : '#888',
                     fontSize: '14px',
-                    cursor: apiKey.trim() ? 'pointer' : 'not-allowed',
+                    cursor: anthropicKey.trim() ? 'pointer' : 'not-allowed',
                   }}
                 >
                   Connect

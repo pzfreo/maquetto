@@ -12,20 +12,22 @@ export function ProviderSettingsModal({
 }: ProviderSettingsModalProps) {
   const aiProvider = useAppStore((s) => s.aiProvider);
   const setAIProvider = useAppStore((s) => s.setAIProvider);
-  const [apiKey, setApiKey] = useState('');
+  const [geminiKey, setGeminiKey] = useState('');
+  const [anthropicKey, setAnthropicKey] = useState('');
 
   if (!isOpen) return null;
 
-  const handleGoogleSignIn = () => {
-    // TODO: Implement Google OAuth in Phase 7
-    setAIProvider({ type: 'google', credential: '' });
+  const handleGeminiKey = () => {
+    if (!geminiKey.trim()) return;
+    setAIProvider({ type: 'google', credential: geminiKey.trim() });
+    setGeminiKey('');
     onClose();
   };
 
   const handleAnthropicKey = () => {
-    if (!apiKey.trim()) return;
-    setAIProvider({ type: 'anthropic', credential: apiKey.trim() });
-    setApiKey('');
+    if (!anthropicKey.trim()) return;
+    setAIProvider({ type: 'anthropic', credential: anthropicKey.trim() });
+    setAnthropicKey('');
     onClose();
   };
 
@@ -106,23 +108,47 @@ export function ProviderSettingsModal({
           )}
         </div>
 
-        {/* Google */}
-        <button
-          onClick={handleGoogleSignIn}
+        {/* Google Gemini */}
+        <div
           style={{
-            width: '100%',
-            padding: '12px',
-            borderRadius: '6px',
-            border: 'none',
-            background: '#4285f4',
-            color: '#fff',
-            fontSize: '14px',
-            cursor: 'pointer',
+            display: 'flex',
+            gap: '8px',
             marginBottom: '10px',
           }}
         >
-          Sign in with Google (Gemini)
-        </button>
+          <input
+            type="password"
+            value={geminiKey}
+            onChange={(e) => setGeminiKey(e.target.value)}
+            placeholder="Gemini API key..."
+            style={{
+              flex: 1,
+              padding: '10px',
+              borderRadius: '6px',
+              border: '1px solid #444',
+              background: '#0d0d1a',
+              color: '#e0e0e0',
+              fontSize: '13px',
+              fontFamily: 'monospace',
+              outline: 'none',
+            }}
+          />
+          <button
+            onClick={handleGeminiKey}
+            disabled={!geminiKey.trim()}
+            style={{
+              padding: '10px 16px',
+              borderRadius: '6px',
+              border: 'none',
+              background: geminiKey.trim() ? '#4285f4' : '#333',
+              color: geminiKey.trim() ? '#fff' : '#888',
+              fontSize: '13px',
+              cursor: geminiKey.trim() ? 'pointer' : 'not-allowed',
+            }}
+          >
+            Save
+          </button>
+        </div>
 
         {/* Anthropic */}
         <div
@@ -134,8 +160,8 @@ export function ProviderSettingsModal({
         >
           <input
             type="password"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
+            value={anthropicKey}
+            onChange={(e) => setAnthropicKey(e.target.value)}
             placeholder="Anthropic API key..."
             style={{
               flex: 1,
@@ -151,15 +177,15 @@ export function ProviderSettingsModal({
           />
           <button
             onClick={handleAnthropicKey}
-            disabled={!apiKey.trim()}
+            disabled={!anthropicKey.trim()}
             style={{
               padding: '10px 16px',
               borderRadius: '6px',
               border: 'none',
-              background: apiKey.trim() ? '#d97706' : '#333',
-              color: apiKey.trim() ? '#fff' : '#888',
+              background: anthropicKey.trim() ? '#d97706' : '#333',
+              color: anthropicKey.trim() ? '#fff' : '#888',
               fontSize: '13px',
-              cursor: apiKey.trim() ? 'pointer' : 'not-allowed',
+              cursor: anthropicKey.trim() ? 'pointer' : 'not-allowed',
             }}
           >
             Save

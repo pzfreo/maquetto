@@ -82,9 +82,10 @@ export function ChatPanel() {
       const summary = extractSummary(fullText);
       saveVersion(currentCode, 'ai', summary, cleanPrompt);
 
-      // Apply the new code
+      // Apply the new code and clear dirty flag (version already saved)
       console.log(`[Chat] Auto-applying code (${newCode.length} chars)`);
       setCode(newCode);
+      useAppStore.getState().setDirty(false);
     }
   }, [status, messages, setCode, saveVersion]);
 

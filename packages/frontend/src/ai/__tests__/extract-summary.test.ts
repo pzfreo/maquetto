@@ -2,7 +2,16 @@ import { describe, it, expect } from 'vitest';
 import { extractSummary } from '../extract-summary';
 
 describe('extractSummary', () => {
-  it('returns first sentence', () => {
+  it('extracts **Summary:** line when present', () => {
+    expect(extractSummary('**Summary:** Added fillets to all edges\n\nHere is the updated code.')).toBe('Added fillets to all edges');
+  });
+
+  it('extracts **Summary:** with code blocks', () => {
+    const text = '**Summary:** Made the box taller\n\n```python\nBox(10,10,20)\n```';
+    expect(extractSummary(text)).toBe('Made the box taller');
+  });
+
+  it('falls back to first sentence when no summary line', () => {
     expect(extractSummary('I added a fillet. Here is the code.')).toBe('I added a fillet.');
   });
 
