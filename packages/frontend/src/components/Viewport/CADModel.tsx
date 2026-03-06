@@ -31,20 +31,18 @@ export function CADModel({ data }: CADModelProps) {
       data,
       '',
       (gltf) => {
-        // Build123d's export_gltf converts mm to meters (per glTF spec).
-        // Scale back to mm so geometry matches our camera/grid/labels.
-        gltf.scene.scale.setScalar(1000);
-
         let meshCount = 0;
         gltf.scene.traverse((child) => {
           if (child instanceof THREE.Mesh) {
             meshCount++;
           }
         });
+        // Build123d's export_gltf converts mm to meters (per glTF spec).
+        // We apply a 1000x scale at the group level when rendering.
         const box = new THREE.Box3().setFromObject(gltf.scene);
         const size = new THREE.Vector3();
         box.getSize(size);
-        console.log(`[Viewport] glTF loaded: ${meshCount} meshes, size=(${size.x.toFixed(1)}, ${size.y.toFixed(1)}, ${size.z.toFixed(1)})`);
+        console.log(`[Viewport] glTF loaded: ${meshCount} meshes, size=(${(size.x * 1000).toFixed(1)}, ${(size.y * 1000).toFixed(1)}, ${(size.z * 1000).toFixed(1)})mm`);
         setScene(gltf.scene);
       },
       (error) => {
@@ -77,15 +75,23 @@ export function CADModel({ data }: CADModelProps) {
       );
     }
 
+    // Update the scene's world matrix so we can compute each mesh's
+    // absolute transform within the glTF (without the 1000x scale —
+    // that's applied at the <group> level in the JSX).
+    scene.updateMatrixWorld(true);
+
     return meshes.map((mesh, index) => {
       const partMeta = parts[index];
       if (!partMeta) return null;
 
-      // Detach from glTF scene so we can render individually
+      // Compute the mesh's world transform within the glTF scene,
+      // then detach and bake it as the mesh's local transform.
+      // This flattens the hierarchy so each mesh can be rendered
+      // independently while keeping its correct position.
+      const worldMatrix = mesh.matrixWorld.clone();
       mesh.removeFromParent();
-
-      // Apply the glTF scene's scale to mesh world matrix
-      mesh.applyMatrix4(scene.matrixWorld);
+      mesh.matrix.copy(worldMatrix);
+      mesh.matrix.decompose(mesh.position, mesh.quaternion, mesh.scale);
 
       mesh.userData.partId = partMeta.id;
       mesh.material = new THREE.MeshStandardMaterial({
@@ -148,7 +154,7 @@ export function CADModel({ data }: CADModelProps) {
   ]);
 
   return (
-    <group ref={groupRef}>
+    <group ref={groupRef} scale={1000}>
       {extractedMeshes.map(({ mesh, partId }) => {
         const isHidden = hiddenPartIds.includes(partId);
         const isSelected = selectedPartIds.includes(partId);
