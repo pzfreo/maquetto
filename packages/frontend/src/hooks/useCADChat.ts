@@ -40,9 +40,12 @@ export function useCADChat(engine: CadEngine | null) {
     return engineRef.current.compile(codeToTest, 'draft');
   }, []);
 
+  // Include engine truthiness so the transport is recreated once the engine
+  // loads (otherwise compileFn is passed as null and test_code tool is missing).
+  const engineReady = !!engine;
   const transport = useMemo(
-    () => createTransport(aiProvider, engineRef.current ? compileFn : null),
-    [aiProvider, compileFn],
+    () => createTransport(aiProvider, engineReady ? compileFn : null),
+    [aiProvider, compileFn, engineReady],
   );
 
   const chat = useChat({
@@ -71,7 +74,30 @@ export function useCADChat(engine: CadEngine | null) {
       ? `${text}\n\n---\n${context}`
       : text;
 
-    chat.sendMessage({ text: messageWithContext });
+    // Capture viewport screenshot from the Three.js canvas
+    let screenshotDataUrl: string | null = null;
+    try {
+      const canvas = document.querySelector('canvas');
+      if (canvas) {
+        screenshotDataUrl = canvas.toDataURL('image/png');
+      }
+    } catch {
+      // Canvas capture can fail due to tainted canvas or security restrictions
+    }
+
+    if (screenshotDataUrl) {
+      console.log('[Chat] Attaching viewport screenshot');
+      chat.sendMessage({
+        text: messageWithContext,
+        files: [{
+          type: 'file' as const,
+          mediaType: 'image/png',
+          url: screenshotDataUrl,
+        }],
+      });
+    } else {
+      chat.sendMessage({ text: messageWithContext });
+    }
   }, [transport, code, parts, selectedPartIds, cameraDescription, chat]);
 
   return {

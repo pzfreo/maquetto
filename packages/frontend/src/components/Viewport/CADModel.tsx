@@ -61,18 +61,31 @@ export function CADModel({ data }: CADModelProps) {
   const extractedMeshes = useMemo<ExtractedMesh[]>(() => {
     if (!scene || parts.length === 0) return [];
 
-    const meshes: THREE.Mesh[] = [];
+    const allMeshes: THREE.Mesh[] = [];
     scene.traverse((child) => {
       if (child instanceof THREE.Mesh) {
-        meshes.push(child);
+        allMeshes.push(child);
       }
     });
 
-    if (meshes.length !== parts.length) {
+    // When Build123d exports a Compound, the glTF may contain a fused
+    // assembly mesh *plus* individual child meshes, giving us more meshes
+    // than parts.  Take only the last parts.length meshes (the children).
+    let meshes: THREE.Mesh[];
+    if (allMeshes.length > parts.length) {
       console.warn(
-        `[Viewport] Mesh count (${meshes.length}) != part count (${parts.length}). ` +
-        `Color/selection mapping may be incorrect.`,
+        `[Viewport] Mesh count (${allMeshes.length}) > part count (${parts.length}). ` +
+        `Skipping first ${allMeshes.length - parts.length} meshes (assembly duplicates).`,
       );
+      meshes = allMeshes.slice(allMeshes.length - parts.length);
+    } else if (allMeshes.length < parts.length) {
+      console.warn(
+        `[Viewport] Mesh count (${allMeshes.length}) < part count (${parts.length}). ` +
+        `Some parts may not render.`,
+      );
+      meshes = allMeshes;
+    } else {
+      meshes = allMeshes;
     }
 
     // Update the scene's world matrix so we can compute each mesh's
@@ -159,7 +172,9 @@ export function CADModel({ data }: CADModelProps) {
         const isHidden = hiddenPartIds.includes(partId);
         const isSelected = selectedPartIds.includes(partId);
 
-        // Apply selection emissive
+        // Set visibility and selection directly on the Three.js object
+        // to avoid R3F primitive prop-update quirks.
+        mesh.visible = !isHidden;
         const mat = mesh.material as THREE.MeshStandardMaterial;
         if (isSelected) {
           mat.emissive.setRGB(0.15, 0.15, 0.15);
@@ -171,7 +186,6 @@ export function CADModel({ data }: CADModelProps) {
           <primitive
             key={partId}
             object={mesh}
-            visible={!isHidden}
           />
         );
       })}
