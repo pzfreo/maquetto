@@ -28,8 +28,10 @@ export interface BoundingBox {
 }
 
 export interface PartMetadata {
-  /** "@1", "@2", etc. — one-indexed, assigned in order of discovery */
+  /** "A", "B", "C" ... "Z", "AA", "AB" — letter label assigned in order of discovery */
   readonly id: string;
+  /** Human-readable name from Python variable name, or null if generic (e.g. "result", "obj") */
+  readonly name: string | null;
   /** RGB, each 0–1 */
   readonly color: readonly [number, number, number];
   readonly boundingBox: BoundingBox;

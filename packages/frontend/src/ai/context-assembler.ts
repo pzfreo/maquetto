@@ -23,7 +23,8 @@ export function assembleContextText(context: CADContext): string {
       ].join(' × ');
 
       const volumeStr = p.volume !== null ? `, volume: ${p.volume.toFixed(1)}` : '';
-      return `- ${p.id}: ${size}mm, ${p.faceCount} faces${volumeStr}`;
+      const nameStr = p.name ? ` (${p.name})` : '';
+      return `- ${p.id}${nameStr}: ${size}mm, ${p.faceCount} faces${volumeStr}`;
     });
 
     sections.push(`## Parts in Viewport\n${partDescriptions.join('\n')}`);

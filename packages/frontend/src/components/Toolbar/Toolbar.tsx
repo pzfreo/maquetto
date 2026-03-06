@@ -71,17 +71,25 @@ export function Toolbar({ onCompile, onRetryEngine }: ToolbarProps) {
       <div ref={fileMenuRef} style={{ position: 'relative' }}>
         <button
           onClick={() => setFileMenuOpen(!fileMenuOpen)}
+          aria-label="Menu"
           style={{
-            padding: '4px 10px',
+            padding: '4px 6px',
             borderRadius: '4px',
-            border: '1px solid #444',
+            border: 'none',
             background: 'transparent',
             color: '#ccc',
             cursor: 'pointer',
-            fontSize: '13px',
+            fontSize: '18px',
+            lineHeight: 1,
+            display: 'flex',
+            alignItems: 'center',
           }}
         >
-          File
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <rect x="2" y="3" width="14" height="2" rx="1" fill="currentColor" />
+            <rect x="2" y="8" width="14" height="2" rx="1" fill="currentColor" />
+            <rect x="2" y="13" width="14" height="2" rx="1" fill="currentColor" />
+          </svg>
         </button>
         {fileMenuOpen && (
           <div

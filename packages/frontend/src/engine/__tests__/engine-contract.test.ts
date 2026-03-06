@@ -15,7 +15,8 @@ function createMockEngine(options?: {
     gltfBase64: btoa('fake-glb-data'),
     parts: [
       {
-        id: '@1',
+        id: 'A',
+        name: null,
         color: [0.259, 0.522, 0.957],
         boundingBox: { min: [0, 0, 0], max: [50, 40, 30] },
         faceCount: 6,
@@ -94,7 +95,7 @@ describe('CadEngine contract', () => {
     const part = result.parts[0];
 
     expect(part).toBeDefined();
-    expect(part?.id).toMatch(/^@\d+$/);
+    expect(part?.id).toMatch(/^[A-Z]+$/);
     expect(part?.color).toHaveLength(3);
     expect(part?.boundingBox.min).toHaveLength(3);
     expect(part?.boundingBox.max).toHaveLength(3);

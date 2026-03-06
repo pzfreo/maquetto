@@ -15,6 +15,7 @@ describe('AppStore', () => {
       gltfData: null,
       executionTimeMs: null,
       selectedPartIds: [],
+      hiddenPartIds: [],
       cameraDescription: 'default view',
       versions: [],
       selectedVersionId: null,
@@ -53,7 +54,8 @@ describe('AppStore', () => {
         gltfBase64: btoa('fake-glb'),
         parts: [
           {
-            id: '@1',
+            id: 'A',
+            name: null,
             color: [0.259, 0.522, 0.957] as const,
             boundingBox: {
               min: [0, 0, 0] as const,
@@ -73,7 +75,7 @@ describe('AppStore', () => {
       const state = useAppStore.getState();
       expect(state.compilationStatus).toBe('success');
       expect(state.parts).toHaveLength(1);
-      expect(state.parts[0]?.id).toBe('@1');
+      expect(state.parts[0]?.id).toBe('A');
       expect(state.gltfData).toBeInstanceOf(ArrayBuffer);
       expect(state.executionTimeMs).toBe(150);
     });
@@ -109,19 +111,39 @@ describe('AppStore', () => {
 
   describe('ViewportSlice', () => {
     it('toggles part selection', () => {
-      useAppStore.getState().togglePartSelection('@1');
-      expect(useAppStore.getState().selectedPartIds).toEqual(['@1']);
+      useAppStore.getState().togglePartSelection('A');
+      expect(useAppStore.getState().selectedPartIds).toEqual(['A']);
 
-      useAppStore.getState().togglePartSelection('@2');
-      expect(useAppStore.getState().selectedPartIds).toEqual(['@1', '@2']);
+      useAppStore.getState().togglePartSelection('B');
+      expect(useAppStore.getState().selectedPartIds).toEqual(['A', 'B']);
 
-      useAppStore.getState().togglePartSelection('@1');
-      expect(useAppStore.getState().selectedPartIds).toEqual(['@2']);
+      useAppStore.getState().togglePartSelection('A');
+      expect(useAppStore.getState().selectedPartIds).toEqual(['B']);
     });
 
     it('sets camera description', () => {
       useAppStore.getState().setCameraDescription('front-right, above');
       expect(useAppStore.getState().cameraDescription).toBe('front-right, above');
+    });
+
+    it('toggles part visibility', () => {
+      useAppStore.getState().togglePartVisibility('A');
+      expect(useAppStore.getState().hiddenPartIds).toEqual(['A']);
+
+      useAppStore.getState().togglePartVisibility('B');
+      expect(useAppStore.getState().hiddenPartIds).toEqual(['A', 'B']);
+
+      useAppStore.getState().togglePartVisibility('A');
+      expect(useAppStore.getState().hiddenPartIds).toEqual(['B']);
+    });
+
+    it('shows all parts', () => {
+      useAppStore.getState().togglePartVisibility('A');
+      useAppStore.getState().togglePartVisibility('B');
+      expect(useAppStore.getState().hiddenPartIds).toHaveLength(2);
+
+      useAppStore.getState().showAllParts();
+      expect(useAppStore.getState().hiddenPartIds).toEqual([]);
     });
   });
 

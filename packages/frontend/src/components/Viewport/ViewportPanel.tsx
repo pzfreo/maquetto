@@ -5,13 +5,14 @@ import { useAppStore } from '../../store';
 import { SceneLighting } from './SceneLighting';
 import { CADModel } from './CADModel';
 import { PartLabels } from './PartLabels';
+import { PartsPanel } from './PartsPanel';
 import { ViewportHelper } from './ViewportHelper';
 
 export function ViewportPanel() {
   const gltfData = useAppStore((s) => s.gltfData);
 
   return (
-    <div style={{ width: '100%', height: '100%' }}>
+    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       <Canvas
         gl={{
           antialias: true,
@@ -37,6 +38,7 @@ export function ViewportPanel() {
         <PartLabels />
         <ViewportHelper />
       </Canvas>
+      <PartsPanel />
     </div>
   );
 }
