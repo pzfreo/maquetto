@@ -6,24 +6,23 @@ import { useAppStore } from '../../store';
 export type CompileFn = (code: string) => Promise<CompileResult>;
 
 /**
- * Wait for the viewport to render the new model, then capture the canvas.
- * Returns a base64 data URL or null if capture fails.
+ * Wait for the viewport to render the new model, then capture via the
+ * store-registered screenshot function (provided by ScreenshotRegistrar
+ * inside the R3F Canvas).
  */
 function captureViewportScreenshot(): Promise<string | null> {
   return new Promise((resolve) => {
     // Wait 500ms for the glTF to load into the scene, then capture after a frame
     setTimeout(() => {
       requestAnimationFrame(() => {
-        try {
-          const canvas = document.querySelector('canvas');
-          if (canvas) {
-            const dataUrl = canvas.toDataURL('image/png');
+        const capture = useAppStore.getState().captureScreenshot;
+        if (capture) {
+          const dataUrl = capture();
+          if (dataUrl) {
             console.log('[test_code] Captured viewport screenshot');
             resolve(dataUrl);
             return;
           }
-        } catch {
-          // Canvas capture can fail (tainted, security)
         }
         resolve(null);
       });

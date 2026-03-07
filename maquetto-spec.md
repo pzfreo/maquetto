@@ -138,7 +138,7 @@ always output complete Build123d scripts in Python code blocks.
 
 When a Python code block appears in the AI response, show an "Apply to
 Editor" button. Clicking it replaces the editor content and triggers
-recompilation. Part references (@1, @2) in chat text are rendered as
+recompilation. Part references (A, B, C) in chat text are rendered as
 colored badges matching the viewport colors.
 
 
@@ -156,7 +156,7 @@ Define a CadEngine interface with three capabilities:
   milliseconds.
 - Disposal: clean up resources.
 
-Part metadata includes: part ID ("@1", "@2" — one-indexed, assigned in
+Part metadata includes: part ID ("A", "B", "C" — letter-based, assigned in
 order of discovery), color (RGB from a 12-color palette), bounding box
 (min/max corners), face count, and volume (null if not a solid).
 
@@ -244,12 +244,12 @@ rendering. Out-of-the-box Three.js looks flat — configure it properly:
 ### Mesh Loading
 
 Receive glTF base64 from the engine, decode and load with GLTFLoader.
-Iterate mesh nodes, match by name ("@1", "@2") to part metadata.
+Iterate mesh nodes, match by name ("A", "B") to part metadata.
 Apply per-part colors from metadata as material baseColorFactor.
 
 ### Part Labels
 
-Render part labels ("@1", "@2") as CSS2D overlays positioned at
+Render part labels ("A", "B") as CSS2D overlays positioned at
 bounding box centroids. Color-coded to match part colors. Toggleable.
 
 ### Part Selection

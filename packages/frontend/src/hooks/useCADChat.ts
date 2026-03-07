@@ -24,6 +24,7 @@ const noopTransport = {
  */
 export function useCADChat(engine: CadEngine | null) {
   const aiProvider = useAppStore((s) => s.aiProvider);
+  const customSystemPrompt = useAppStore((s) => s.customSystemPrompt);
   const code = useAppStore((s) => s.code);
   const parts = useAppStore((s) => s.parts);
   const selectedPartIds = useAppStore((s) => s.selectedPartIds);
@@ -44,8 +45,8 @@ export function useCADChat(engine: CadEngine | null) {
   // loads (otherwise compileFn is passed as null and test_code tool is missing).
   const engineReady = !!engine;
   const transport = useMemo(
-    () => createTransport(aiProvider, engineReady ? compileFn : null),
-    [aiProvider, compileFn, engineReady],
+    () => createTransport(aiProvider, engineReady ? compileFn : null, customSystemPrompt),
+    [aiProvider, compileFn, engineReady, customSystemPrompt],
   );
 
   const chat = useChat({
