@@ -30,12 +30,14 @@
   <p>If you use the cloud save feature, the CAD code you choose to save is stored in our database associated with your account.</p>
 
   <h2>AI Features</h2>
-  <p>When you use AI chat features, your messages and any viewport screenshots you attach are sent to the AI provider you have configured (Google Gemini or Anthropic Claude). These requests are governed by the respective provider's privacy policy:</p>
+  <p>When you use AI chat features, your messages and any viewport screenshots you attach are sent directly from your browser to the AI provider you have configured (Google Gemini or Anthropic Claude). These requests go directly to the provider — they do not pass through our servers. They are governed by the respective provider's privacy policy:</p>
   <ul>
     <li><a href="https://policies.google.com/privacy">Google Privacy Policy</a></li>
     <li><a href="https://www.anthropic.com/privacy">Anthropic Privacy Policy</a></li>
   </ul>
-  <p>For Google Gemini, if you sign in with Google, your Google OAuth token is used to authenticate API requests. For Anthropic Claude, you provide your own API key which is stored only in your browser's local storage.</p>
+
+  <h2>API Key Storage</h2>
+  <p><strong>Your API keys are stored only in your browser's local storage.</strong> They are never transmitted to or stored on our servers. When you make an AI request, your browser sends the API key directly to the provider (Google or Anthropic) — Maquetto's servers are not involved in this communication.</p>
 
   <h2>Data We Do Not Collect</h2>
   <ul>

@@ -267,12 +267,14 @@ export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
                 >
                   Connect
                 </button>
-                <p style={{ fontSize: '11px', color: '#666', margin: '0' }}>
-                  Key stored locally, never sent to any third party
-                </p>
               </div>
             )}
           </div>
+
+          <p style={{ fontSize: '11px', color: '#666', margin: '4px 0 0 0', lineHeight: 1.5 }}>
+            API keys are stored in your browser&apos;s local storage and are never sent to our servers.
+            {' '}<a href="/privacy.html" target="_blank" style={{ color: '#4a9eff' }}>Privacy policy</a>
+          </p>
 
           {/* Skip */}
           <button

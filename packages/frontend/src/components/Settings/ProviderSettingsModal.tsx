@@ -258,6 +258,10 @@ export function ProviderSettingsModal({
               Save
             </button>
           </div>
+
+          <p style={{ fontSize: '11px', color: '#666', margin: '8px 0 0 0' }}>
+            Keys are stored locally in your browser and never sent to our servers.
+          </p>
         </div>
 
         {/* Close */}
