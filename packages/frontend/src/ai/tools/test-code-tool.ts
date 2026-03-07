@@ -1,6 +1,7 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import type { CompileResult } from '@maquetto/api-types';
+import { useAppStore } from '../../store';
 
 export type CompileFn = (code: string) => Promise<CompileResult>;
 
@@ -10,8 +11,8 @@ export type CompileFn = (code: string) => Promise<CompileResult>;
  */
 function captureViewportScreenshot(): Promise<string | null> {
   return new Promise((resolve) => {
-    // Wait two animation frames for the glTF to load and render
-    requestAnimationFrame(() => {
+    // Wait 500ms for the glTF to load into the scene, then capture after a frame
+    setTimeout(() => {
       requestAnimationFrame(() => {
         try {
           const canvas = document.querySelector('canvas');
@@ -26,18 +27,24 @@ function captureViewportScreenshot(): Promise<string | null> {
         }
         resolve(null);
       });
-    });
+    }, 500);
   });
 }
 
 export function createTestCodeTool(compileFn: CompileFn) {
-  return tool({
+  const inputSchema = z.object({
+    code: z.string().describe('Complete Build123d Python code to test'),
+  });
+
+  // Build tool config with experimental_toToolResultContent for image support.
+  // The `as any` is needed because the Vercel AI SDK tool() overload doesn't
+  // expose experimental_toToolResultContent in its public type signature yet.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const config: any = {
     description:
       'MANDATORY: Test Build123d Python code by compiling it in the CAD engine. You MUST call this tool before presenting ANY code to the user. Returns compilation errors (fix and retry) or success with part count and a viewport screenshot showing the rendered result.',
-    inputSchema: z.object({
-      code: z.string().describe('Complete Build123d Python code to test'),
-    }),
-    execute: async ({ code }) => {
+    inputSchema,
+    execute: async ({ code }: z.infer<typeof inputSchema>) => {
       console.log('[test_code] Testing code...', code.length, 'chars');
       try {
         const result = await compileFn(code);
@@ -54,8 +61,11 @@ export function createTestCodeTool(compileFn: CompileFn) {
         }
         console.log('[test_code] Success:', result.parts.length, 'parts');
 
-        // Capture the viewport after successful compile so the AI can
-        // visually verify the result looks correct
+        // Push the result into the store so the viewport actually renders
+        // the new model before we capture the screenshot
+        useAppStore.getState().setCompileResult(result);
+
+        // Capture the viewport after the store update propagates to Three.js
         const screenshot = await captureViewportScreenshot();
 
         return {
@@ -72,5 +82,25 @@ export function createTestCodeTool(compileFn: CompileFn) {
         };
       }
     },
-  });
+    // Return screenshot as an image content part so the model can actually see it
+    experimental_toToolResultContent(result: Record<string, unknown>) {
+      const parts: Array<
+        { type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string }
+      > = [];
+
+      // Always include the structured result as text (without the huge data URL)
+      const { viewportScreenshot, ...rest } = result;
+      parts.push({ type: 'text', text: JSON.stringify(rest) });
+
+      // If there's a screenshot, include it as an image content part
+      if (typeof viewportScreenshot === 'string' && viewportScreenshot.startsWith('data:image/png;base64,')) {
+        const base64 = viewportScreenshot.replace('data:image/png;base64,', '');
+        parts.push({ type: 'image', data: base64, mimeType: 'image/png' });
+      }
+
+      return parts;
+    },
+  };
+
+  return tool(config);
 }
