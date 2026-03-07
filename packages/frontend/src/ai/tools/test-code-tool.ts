@@ -7,7 +7,7 @@ export type CompileFn = (code: string) => Promise<CompileResult>;
 export function createTestCodeTool(compileFn: CompileFn) {
   return tool({
     description:
-      'Test Build123d Python code by compiling it in the CAD engine. Returns compilation errors or success with part count. Always test your code before presenting it to the user.',
+      'MANDATORY: Test Build123d Python code by compiling it in the CAD engine. You MUST call this tool before presenting ANY code to the user. Returns compilation errors (fix and retry) or success with part count.',
     inputSchema: z.object({
       code: z.string().describe('Complete Build123d Python code to test'),
     }),
