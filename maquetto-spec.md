@@ -74,9 +74,18 @@ authentication and Gemini API access.
 
 - Package: @ai-sdk/google
 - Auth: Supabase Google OAuth with additional Gemini scope
-- Supabase configured to request the
-  `https://www.googleapis.com/auth/generative-language.generativelanguage`
-  scope alongside standard profile/email scopes
+- The Gemini scope is requested at sign-in time via `signInWithOAuth`
+  options (not in the Supabase dashboard — there is no "additional
+  scopes" setting there):
+  ```typescript
+  supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      scopes: 'https://www.googleapis.com/auth/generative-language',
+      queryParams: { access_type: 'offline', prompt: 'consent' },
+    },
+  });
+  ```
 - On sign-in, Supabase stores the Google `provider_token` on the session
 - This provider token is passed to the Vercel AI SDK's Google provider
   for Gemini API calls
