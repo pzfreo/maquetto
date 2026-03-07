@@ -18,6 +18,7 @@ export const createCompilationSlice: StateCreator<AppStore, [], [], CompilationS
   gltfData: null,
   executionTimeMs: null,
   pendingChatMessage: null,
+  clearChat: null,
 
   setCompileResult: (result) => {
     const gltfData = result.gltfBase64 ? base64ToArrayBuffer(result.gltfBase64) : null;
@@ -45,4 +46,6 @@ export const createCompilationSlice: StateCreator<AppStore, [], [], CompilationS
     }),
 
   setPendingChatMessage: (pendingChatMessage) => set({ pendingChatMessage }),
+
+  setClearChat: (clearChat) => set({ clearChat }),
 });

@@ -1,4 +1,4 @@
-import { useRef, useEffect, useMemo } from 'react';
+import { useRef, useEffect, useMemo, useCallback } from 'react';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { useCADChat } from '../../hooks/useCADChat';
@@ -63,11 +63,19 @@ export function ChatPanel({ onCompile, engine }: ChatPanelProps) {
     error,
     sendMessage,
     stop,
+    setMessages,
     isConfigured,
   } = useCADChat(engine);
 
   const isStreaming = status === 'streaming' || status === 'submitted';
   const pendingChatMessage = useAppStore((s) => s.pendingChatMessage);
+
+  // Register clearChat so other components (e.g. Toolbar "New") can reset the chat
+  const clearChat = useCallback(() => setMessages([]), [setMessages]);
+  useEffect(() => {
+    useAppStore.getState().setClearChat(clearChat);
+    return () => useAppStore.getState().setClearChat(null);
+  }, [clearChat]);
   const setPendingChatMessage = useAppStore((s) => s.setPendingChatMessage);
   const setCode = useAppStore((s) => s.setCode);
   const saveVersion = useAppStore((s) => s.saveVersion);

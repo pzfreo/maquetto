@@ -58,10 +58,13 @@ export interface CompilationSlice {
   readonly executionTimeMs: number | null;
   /** Message queued for the AI chat (e.g. from "Ask AI to fix" button). */
   readonly pendingChatMessage: string | null;
+  /** Registered by ChatPanel — clears the AI chat message history. */
+  clearChat: (() => void) | null;
   setCompileResult: (result: CompileResult) => void;
   setCompilationStatus: (status: CompilationStatus) => void;
   clearCompilation: () => void;
   setPendingChatMessage: (message: string | null) => void;
+  setClearChat: (fn: (() => void) | null) => void;
 }
 
 // --- Viewport Slice ---
