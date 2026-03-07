@@ -28,6 +28,7 @@ export function PartLabels() {
               key={part.id}
               position={centroid}
               center
+              zIndexRange={[1, 0]}
               style={{ pointerEvents: 'none' }}
             >
               <div
