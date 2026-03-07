@@ -197,8 +197,8 @@ export function ChatPanel({ onCompile, engine }: ChatPanelProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = (text: string) => {
-    sendMessage(text);
+  const handleSend = (text: string, options?: { includeScreenshot?: boolean }) => {
+    sendMessage(text, options);
   };
 
   const handleStop = () => {
