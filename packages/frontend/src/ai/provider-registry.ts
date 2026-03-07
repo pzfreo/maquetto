@@ -7,13 +7,10 @@ import type { CompileFn } from './tools/test-code-tool';
 /**
  * Creates a ChatTransport for the given AI provider configuration.
  * Returns null if no provider is configured.
- *
- * @param isOAuthToken - If true, the Google credential is a Supabase provider_token
  */
 export function createTransport(
   config: AIProviderConfig,
   compileFn: CompileFn | null,
-  isOAuthToken = false,
 ) {
   if (config.type === 'none' || !config.credential) {
     console.log('[Provider] No AI provider configured');
@@ -23,7 +20,7 @@ export function createTransport(
   console.log(`[Provider] Creating transport for: ${config.type}`);
   switch (config.type) {
     case 'google':
-      return createGoogleTransport(config.credential, CAD_SYSTEM_PROMPT, compileFn, isOAuthToken);
+      return createGoogleTransport(config.credential, CAD_SYSTEM_PROMPT, compileFn);
     case 'anthropic':
       return createAnthropicTransport(config.credential, CAD_SYSTEM_PROMPT, compileFn);
     default:
