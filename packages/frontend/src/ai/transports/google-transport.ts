@@ -22,20 +22,31 @@ export function createGoogleTransport(
     ? { test_code: createTestCodeTool(compileFn) }
     : undefined;
 
+  // Track whether the last test_code call failed so we can force a retry
+  let lastTestFailed = true;
+
   const agent = new ToolLoopAgent({
     model: google('gemini-2.0-flash'),
     instructions: systemPrompt,
     ...(tools && { tools }),
     stopWhen: stepCountIs(6),
+    // Force tool use on step 0 (initial test) and whenever the previous
+    // test_code call returned errors, so the AI must fix and retry rather
+    // than presenting broken code.
     ...(tools && {
       prepareStep({ stepNumber }: { stepNumber: number }) {
-        return { toolChoice: stepNumber === 0 ? ('required' as const) : ('auto' as const) };
+        const force = stepNumber === 0 || lastTestFailed;
+        return { toolChoice: force ? ('required' as const) : ('auto' as const) };
       },
     }),
     onStepFinish({ stepNumber, finishReason, toolCalls, toolResults }) {
       console.log(`[Google] Step ${stepNumber} finished: reason=${finishReason}, toolCalls=${toolCalls.length}, toolResults=${toolResults.length}`);
       for (const r of toolResults) {
         console.log(`[Google]   tool=${r.toolName} output=`, r.output);
+        if (r.toolName === 'test_code') {
+          const output = r.output as Record<string, unknown>;
+          lastTestFailed = output.success !== true;
+        }
       }
     },
   });

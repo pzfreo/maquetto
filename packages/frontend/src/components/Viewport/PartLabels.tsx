@@ -4,6 +4,9 @@ import { useAppStore } from '../../store';
 export function PartLabels() {
   const parts = useAppStore((s) => s.parts);
   const hiddenPartIds = useAppStore((s) => s.hiddenPartIds);
+  const labelsVisible = useAppStore((s) => s.labelsVisible);
+
+  if (!labelsVisible) return null;
 
   return (
     <>

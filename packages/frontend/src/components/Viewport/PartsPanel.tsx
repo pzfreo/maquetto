@@ -7,6 +7,8 @@ export function PartsPanel() {
   const togglePartVisibility = useAppStore((s) => s.togglePartVisibility);
   const setSelectedPartIds = useAppStore((s) => s.setSelectedPartIds);
   const showAllParts = useAppStore((s) => s.showAllParts);
+  const labelsVisible = useAppStore((s) => s.labelsVisible);
+  const setLabelsVisible = useAppStore((s) => s.setLabelsVisible);
 
   if (parts.length === 0) return null;
 
@@ -40,21 +42,37 @@ export function PartsPanel() {
         <span style={{ color: '#888', fontWeight: 600, fontSize: 11 }}>
           Parts
         </span>
-        {hiddenPartIds.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           <button
-            onClick={showAllParts}
+            onClick={() => setLabelsVisible(!labelsVisible)}
+            title={labelsVisible ? 'Hide labels' : 'Show labels'}
             style={{
               background: 'none',
               border: 'none',
-              color: '#6b8afd',
+              color: labelsVisible ? '#6b8afd' : '#555',
               cursor: 'pointer',
               fontSize: 10,
               padding: 0,
             }}
           >
-            Show All
+            Labels
           </button>
-        )}
+          {hiddenPartIds.length > 0 && (
+            <button
+              onClick={showAllParts}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#6b8afd',
+                cursor: 'pointer',
+                fontSize: 10,
+                padding: 0,
+              }}
+            >
+              Show All
+            </button>
+          )}
+        </div>
       </div>
       {parts.map((part) => {
         const isHidden = hiddenPartIds.includes(part.id);

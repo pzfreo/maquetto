@@ -27,23 +27,31 @@ export function createAnthropicTransport(
     ? { test_code: createTestCodeTool(compileFn) }
     : undefined;
 
+  // Track whether the last test_code call failed so we can force a retry
+  let lastTestFailed = true;
+
   const agent = new ToolLoopAgent({
     model: anthropic('claude-sonnet-4-20250514'),
     instructions: systemPrompt,
     ...(tools && { tools }),
     stopWhen: stepCountIs(6),
-    // Force tool use on the first step so Claude must call test_code
-    // before presenting code. Subsequent steps use 'auto' so Claude
-    // can respond with text after getting successful test results.
+    // Force tool use on step 0 (initial test) and whenever the previous
+    // test_code call returned errors, so Claude must fix and retry rather
+    // than presenting broken code.
     ...(tools && {
       prepareStep({ stepNumber }: { stepNumber: number }) {
-        return { toolChoice: stepNumber === 0 ? ('required' as const) : ('auto' as const) };
+        const force = stepNumber === 0 || lastTestFailed;
+        return { toolChoice: force ? ('required' as const) : ('auto' as const) };
       },
     }),
     onStepFinish({ stepNumber, finishReason, toolCalls, toolResults }) {
       console.log(`[Anthropic] Step ${stepNumber} finished: reason=${finishReason}, toolCalls=${toolCalls.length}, toolResults=${toolResults.length}`);
       for (const r of toolResults) {
         console.log(`[Anthropic]   tool=${r.toolName} output=`, r.output);
+        if (r.toolName === 'test_code') {
+          const output = r.output as Record<string, unknown>;
+          lastTestFailed = output.success !== true;
+        }
       }
     },
   });

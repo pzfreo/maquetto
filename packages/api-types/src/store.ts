@@ -70,6 +70,7 @@ export interface ViewportSlice {
   readonly selectedPartIds: ReadonlyArray<string>;
   readonly hiddenPartIds: ReadonlyArray<string>;
   readonly cameraDescription: string;
+  readonly labelsVisible: boolean;
   /** Registered by the viewport Canvas — captures the current render as a PNG data URL. */
   captureScreenshot: (() => string | null) | null;
   setSelectedPartIds: (ids: ReadonlyArray<string>) => void;
@@ -78,6 +79,7 @@ export interface ViewportSlice {
   showAllParts: () => void;
   setCameraDescription: (desc: string) => void;
   setCaptureScreenshot: (fn: (() => string | null) | null) => void;
+  setLabelsVisible: (visible: boolean) => void;
 }
 
 // --- Settings Slice ---
