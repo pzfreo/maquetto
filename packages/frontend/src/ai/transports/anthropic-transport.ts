@@ -1,6 +1,7 @@
-import { DirectChatTransport, ToolLoopAgent } from 'ai';
+import { ToolLoopAgent } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createTestCodeTool, type CompileFn } from '../tools/test-code-tool';
+import { DataUrlSafeChatTransport } from './data-url-safe-transport';
 
 /**
  * The URL of the edge proxy for Anthropic API requests.
@@ -40,5 +41,5 @@ export function createAnthropicTransport(
     ...(tools && { tools, maxSteps: 5 }),
   });
 
-  return new DirectChatTransport({ agent });
+  return new DataUrlSafeChatTransport({ agent });
 }

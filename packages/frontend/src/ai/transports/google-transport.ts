@@ -1,6 +1,7 @@
-import { DirectChatTransport, ToolLoopAgent } from 'ai';
+import { ToolLoopAgent } from 'ai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createTestCodeTool, type CompileFn } from '../tools/test-code-tool';
+import { DataUrlSafeChatTransport } from './data-url-safe-transport';
 
 /**
  * Creates a ChatTransport that talks directly to Google Gemini.
@@ -24,5 +25,5 @@ export function createGoogleTransport(
     ...(tools && { tools, maxSteps: 5 }),
   });
 
-  return new DirectChatTransport({ agent });
+  return new DataUrlSafeChatTransport({ agent });
 }
