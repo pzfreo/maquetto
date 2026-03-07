@@ -80,6 +80,11 @@ export function ChatPanel({ onCompile, engine }: ChatPanelProps) {
   const setCode = useAppStore((s) => s.setCode);
   const saveVersion = useAppStore((s) => s.saveVersion);
   const prevStatusRef = useRef(status);
+  // Programmatic auto-retry: after auto-apply, if compile fails, send errors
+  // back to the AI automatically (up to MAX_AUTO_RETRIES times).
+  const autoRetryCountRef = useRef(0);
+  const waitingForCompileRef = useRef(false);
+  const MAX_AUTO_RETRIES = 3;
 
   // Detect tool activity in the current streaming message
   const toolActivity = useMemo(() => {
@@ -139,9 +144,53 @@ export function ChatPanel({ onCompile, engine }: ChatPanelProps) {
       console.log(`[Chat] Auto-applying code (${newCode.length} chars)`);
       setCode(newCode);
       useAppStore.getState().setDirty(false);
+      waitingForCompileRef.current = true;
       onCompile?.();
     }
   }, [status, messages, setCode, saveVersion, onCompile]);
+
+  // Reset retry count when the user sends a new message
+  const messageCount = messages.length;
+  const prevMessageCountRef = useRef(messageCount);
+  useEffect(() => {
+    const prevCount = prevMessageCountRef.current;
+    prevMessageCountRef.current = messageCount;
+    // If a new user message appeared, reset retry counter
+    if (messageCount > prevCount) {
+      const latest = messages[messages.length - 1];
+      if (latest?.role === 'user') {
+        autoRetryCountRef.current = 0;
+      }
+    }
+  }, [messageCount, messages]);
+
+  // Watch for compile errors after auto-apply and send them back to the AI
+  const compilationStatus = useAppStore((s) => s.compilationStatus);
+  const compileErrors = useAppStore((s) => s.errors);
+  useEffect(() => {
+    if (!waitingForCompileRef.current) return;
+    if (compilationStatus !== 'error' && compilationStatus !== 'success') return;
+
+    waitingForCompileRef.current = false;
+
+    if (compilationStatus === 'error' && compileErrors.length > 0) {
+      if (autoRetryCountRef.current >= MAX_AUTO_RETRIES) {
+        console.log(`[Chat] Auto-retry limit reached (${MAX_AUTO_RETRIES}), not retrying`);
+        return;
+      }
+      autoRetryCountRef.current++;
+      const errorLines = compileErrors.map((e) => {
+        const loc = e.line !== null ? ` (line ${e.line})` : '';
+        return `[${e.type}]${loc}: ${e.message}`;
+      });
+      const retryMsg = `The code you provided has compilation errors. Please fix them and try again:\n\n${errorLines.join('\n\n')}`;
+      console.log(`[Chat] Auto-retrying (attempt ${autoRetryCountRef.current}/${MAX_AUTO_RETRIES}): ${compileErrors.length} errors`);
+      sendMessage(retryMsg);
+    } else {
+      // Success — reset retry counter
+      autoRetryCountRef.current = 0;
+    }
+  }, [compilationStatus, compileErrors, sendMessage]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
