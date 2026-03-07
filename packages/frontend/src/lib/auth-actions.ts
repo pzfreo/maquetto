@@ -5,7 +5,7 @@ export async function signInWithGoogle() {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      scopes: 'https://www.googleapis.com/auth/generative-language',
+      scopes: 'https://www.googleapis.com/auth/generative-language.retriever',
       queryParams: {
         access_type: 'offline',
         prompt: 'consent',
