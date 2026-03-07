@@ -3,8 +3,12 @@ import {
   validateUIMessages,
 } from 'ai';
 
-// Use a minimal structural type for the agent so we don't fight
-// ToolLoopAgent's complex generics.  We only need stream() and tools.
+// Structural type for the agent — avoids coupling to ToolLoopAgent's
+// deeply nested generics (ToolLoopAgent<CALL_OPTIONS, TOOLS, OUTPUT>).
+// The Vercel AI SDK doesn't export a simple "Agent" interface we can use,
+// so we match the shape we need: tools (for message validation) and
+// stream() (for generating responses). The `any` types here are forced
+// by the SDK's internal types not being publicly importable.
 interface AgentLike {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tools: any;

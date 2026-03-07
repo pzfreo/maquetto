@@ -50,6 +50,9 @@ export function useCADChat(engine: CadEngine | null) {
 
   const chat = useChat({
     id: 'cad-chat',
+    // DataUrlSafeChatTransport matches useChat's transport shape but uses
+    // structural typing (AgentLike) that doesn't satisfy the SDK's exact
+    // generic constraints. Cast required until Vercel exports a simpler type.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     transport: (transport ?? noopTransport) as any,
   });

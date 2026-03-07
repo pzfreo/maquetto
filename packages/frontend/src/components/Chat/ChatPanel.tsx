@@ -27,6 +27,9 @@ interface ToolInvocationInfo {
  * Extract tool invocation info from the latest assistant message parts.
  */
 function getToolActivity(
+  // UIMessage.parts is typed as Array<Record<string, unknown>> by the SDK
+  // but the actual runtime shape has string .type and optional .result fields
+  // that aren't in the public type. Cast required to inspect tool state.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   parts: ReadonlyArray<Record<string, any>>,
 ): ToolInvocationInfo | null {
