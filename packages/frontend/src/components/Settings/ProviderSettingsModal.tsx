@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppStore } from '../../store';
 import { signInWithGoogle } from '../../lib/auth-actions';
+import { CAD_SYSTEM_PROMPT } from '../../ai/system-prompt';
 
 interface ProviderSettingsModalProps {
   isOpen: boolean;
@@ -15,8 +16,20 @@ export function ProviderSettingsModal({
   const setAIProvider = useAppStore((s) => s.setAIProvider);
   const authUser = useAppStore((s) => s.authUser);
   const signOut = useAppStore((s) => s.signOut);
+  const customSystemPrompt = useAppStore((s) => s.customSystemPrompt);
+  const setCustomSystemPrompt = useAppStore((s) => s.setCustomSystemPrompt);
   const [geminiKey, setGeminiKey] = useState('');
   const [anthropicKey, setAnthropicKey] = useState('');
+  const [promptDraft, setPromptDraft] = useState('');
+  const [showPromptEditor, setShowPromptEditor] = useState(false);
+
+  // Sync draft with store when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setPromptDraft(customSystemPrompt ?? '');
+      setShowPromptEditor(!!customSystemPrompt);
+    }
+  }, [isOpen, customSystemPrompt]);
 
   if (!isOpen) return null;
 
@@ -90,8 +103,10 @@ export function ProviderSettingsModal({
           background: '#1e1e2e',
           borderRadius: '12px',
           padding: '28px',
-          maxWidth: '420px',
+          maxWidth: '520px',
           width: '90%',
+          maxHeight: '85vh',
+          overflowY: 'auto',
           border: '1px solid #333',
         }}
       >
@@ -262,6 +277,111 @@ export function ProviderSettingsModal({
           <p style={{ fontSize: '11px', color: '#666', margin: '8px 0 0 0' }}>
             Keys are stored locally in your browser and never sent to our servers.
           </p>
+        </div>
+
+        {/* System Prompt section */}
+        <div style={sectionStyle}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              System Prompt
+            </div>
+            {!showPromptEditor ? (
+              <button
+                onClick={() => { setShowPromptEditor(true); setPromptDraft(customSystemPrompt ?? CAD_SYSTEM_PROMPT); }}
+                style={{
+                  padding: '2px 8px',
+                  borderRadius: '3px',
+                  border: '1px solid #444',
+                  background: 'transparent',
+                  color: '#aaa',
+                  fontSize: '11px',
+                  cursor: 'pointer',
+                }}
+              >
+                {customSystemPrompt ? 'Edit' : 'Customize'}
+              </button>
+            ) : (
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <button
+                  onClick={() => {
+                    const trimmed = promptDraft.trim();
+                    setCustomSystemPrompt(trimmed === CAD_SYSTEM_PROMPT || !trimmed ? null : trimmed);
+                    setShowPromptEditor(false);
+                  }}
+                  style={{
+                    padding: '2px 8px',
+                    borderRadius: '3px',
+                    border: 'none',
+                    background: '#4a9eff',
+                    color: '#fff',
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Save
+                </button>
+                {customSystemPrompt && (
+                  <button
+                    onClick={() => {
+                      setCustomSystemPrompt(null);
+                      setPromptDraft('');
+                      setShowPromptEditor(false);
+                    }}
+                    style={{
+                      padding: '2px 8px',
+                      borderRadius: '3px',
+                      border: '1px solid #f44336',
+                      background: 'transparent',
+                      color: '#f44336',
+                      fontSize: '11px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Reset
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowPromptEditor(false)}
+                  style={{
+                    padding: '2px 8px',
+                    borderRadius: '3px',
+                    border: '1px solid #444',
+                    background: 'transparent',
+                    color: '#888',
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+          {showPromptEditor ? (
+            <textarea
+              value={promptDraft}
+              onChange={(e) => setPromptDraft(e.target.value)}
+              style={{
+                width: '100%',
+                minHeight: '200px',
+                padding: '10px',
+                borderRadius: '6px',
+                border: '1px solid #444',
+                background: '#0d0d1a',
+                color: '#e0e0e0',
+                fontSize: '12px',
+                fontFamily: 'monospace',
+                outline: 'none',
+                resize: 'vertical',
+                lineHeight: 1.5,
+                boxSizing: 'border-box',
+              }}
+            />
+          ) : (
+            <p style={{ fontSize: '11px', color: '#666', margin: 0 }}>
+              {customSystemPrompt ? 'Using custom system prompt.' : 'Using default system prompt.'}
+            </p>
+          )}
         </div>
 
         {/* Close */}

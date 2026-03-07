@@ -4,6 +4,7 @@ import type { SettingsSlice, AppStore, AIProviderConfig, QualityLevel } from '@m
 const STORAGE_KEYS = {
   aiProvider: 'maquetto:ai-provider',
   qualityLevel: 'maquetto:quality-level',
+  customSystemPrompt: 'maquetto:custom-system-prompt',
 } as const;
 
 function loadAIProvider(): AIProviderConfig {
@@ -27,9 +28,14 @@ function loadQualityLevel(): QualityLevel {
   return 'normal';
 }
 
+function loadCustomSystemPrompt(): string | null {
+  return localStorage.getItem(STORAGE_KEYS.customSystemPrompt) || null;
+}
+
 export const createSettingsSlice: StateCreator<AppStore, [], [], SettingsSlice> = (set) => ({
   aiProvider: loadAIProvider(),
   qualityLevel: loadQualityLevel(),
+  customSystemPrompt: loadCustomSystemPrompt(),
 
   setAIProvider: (aiProvider) => {
     console.log(`[Settings] Saving AI provider: ${aiProvider.type}`);
@@ -41,5 +47,14 @@ export const createSettingsSlice: StateCreator<AppStore, [], [], SettingsSlice> 
     console.log(`[Settings] Saving quality level: ${qualityLevel}`);
     localStorage.setItem(STORAGE_KEYS.qualityLevel, qualityLevel);
     set({ qualityLevel });
+  },
+
+  setCustomSystemPrompt: (customSystemPrompt) => {
+    if (customSystemPrompt) {
+      localStorage.setItem(STORAGE_KEYS.customSystemPrompt, customSystemPrompt);
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.customSystemPrompt);
+    }
+    set({ customSystemPrompt });
   },
 });

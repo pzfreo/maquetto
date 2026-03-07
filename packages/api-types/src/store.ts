@@ -85,8 +85,11 @@ export interface ViewportSlice {
 export interface SettingsSlice {
   readonly aiProvider: AIProviderConfig;
   readonly qualityLevel: QualityLevel;
+  /** User override for the AI system prompt. null = use default. */
+  readonly customSystemPrompt: string | null;
   setAIProvider: (config: AIProviderConfig) => void;
   setQualityLevel: (level: QualityLevel) => void;
+  setCustomSystemPrompt: (prompt: string | null) => void;
 }
 
 // --- Version History Slice ---

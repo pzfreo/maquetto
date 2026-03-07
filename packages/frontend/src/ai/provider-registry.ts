@@ -11,18 +11,20 @@ import type { CompileFn } from './tools/test-code-tool';
 export function createTransport(
   config: AIProviderConfig,
   compileFn: CompileFn | null,
+  customSystemPrompt?: string | null,
 ) {
   if (config.type === 'none' || !config.credential) {
     console.log('[Provider] No AI provider configured');
     return null;
   }
 
-  console.log(`[Provider] Creating transport for: ${config.type}`);
+  const systemPrompt = customSystemPrompt || CAD_SYSTEM_PROMPT;
+  console.log(`[Provider] Creating transport for: ${config.type}${customSystemPrompt ? ' (custom prompt)' : ''}`);
   switch (config.type) {
     case 'google':
-      return createGoogleTransport(config.credential, CAD_SYSTEM_PROMPT, compileFn);
+      return createGoogleTransport(config.credential, systemPrompt, compileFn);
     case 'anthropic':
-      return createAnthropicTransport(config.credential, CAD_SYSTEM_PROMPT, compileFn);
+      return createAnthropicTransport(config.credential, systemPrompt, compileFn);
     default:
       console.warn(`[Provider] Unknown provider type: ${config.type}`);
       return null;
