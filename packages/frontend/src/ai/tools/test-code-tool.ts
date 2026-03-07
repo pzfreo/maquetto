@@ -13,24 +13,32 @@ export function createTestCodeTool(compileFn: CompileFn) {
     }),
     execute: async ({ code }) => {
       console.log('[test_code] Testing code...', code.length, 'chars');
-      const result = await compileFn(code);
-      if (result.errors.length > 0) {
-        console.log('[test_code] Errors:', result.errors.length);
+      try {
+        const result = await compileFn(code);
+        if (result.errors.length > 0) {
+          console.log('[test_code] Errors:', result.errors.length);
+          return {
+            success: false as const,
+            errors: result.errors.map((e) => ({
+              type: e.type,
+              message: e.message,
+              line: e.line,
+            })),
+          };
+        }
+        console.log('[test_code] Success:', result.parts.length, 'parts');
+        return {
+          success: true as const,
+          partCount: result.parts.length,
+          warnings: result.warnings,
+        };
+      } catch (err) {
+        console.error('[test_code] Compile threw:', err);
         return {
           success: false as const,
-          errors: result.errors.map((e) => ({
-            type: e.type,
-            message: e.message,
-            line: e.line,
-          })),
+          errors: [{ type: 'runtime' as const, message: String(err), line: null }],
         };
       }
-      console.log('[test_code] Success:', result.parts.length, 'parts');
-      return {
-        success: true as const,
-        partCount: result.parts.length,
-        warnings: result.warnings,
-      };
     },
   });
 }
