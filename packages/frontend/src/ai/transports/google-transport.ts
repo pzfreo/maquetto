@@ -27,6 +27,11 @@ export function createGoogleTransport(
     instructions: systemPrompt,
     ...(tools && { tools }),
     stopWhen: stepCountIs(6),
+    ...(tools && {
+      prepareStep({ stepNumber }: { stepNumber: number }) {
+        return { toolChoice: stepNumber === 0 ? ('required' as const) : ('auto' as const) };
+      },
+    }),
     onStepFinish({ stepNumber, finishReason, toolCalls, toolResults }) {
       console.log(`[Google] Step ${stepNumber} finished: reason=${finishReason}, toolCalls=${toolCalls.length}, toolResults=${toolResults.length}`);
       for (const r of toolResults) {

@@ -32,6 +32,14 @@ export function createAnthropicTransport(
     instructions: systemPrompt,
     ...(tools && { tools }),
     stopWhen: stepCountIs(6),
+    // Force tool use on the first step so Claude must call test_code
+    // before presenting code. Subsequent steps use 'auto' so Claude
+    // can respond with text after getting successful test results.
+    ...(tools && {
+      prepareStep({ stepNumber }: { stepNumber: number }) {
+        return { toolChoice: stepNumber === 0 ? ('required' as const) : ('auto' as const) };
+      },
+    }),
     onStepFinish({ stepNumber, finishReason, toolCalls, toolResults }) {
       console.log(`[Anthropic] Step ${stepNumber} finished: reason=${finishReason}, toolCalls=${toolCalls.length}, toolResults=${toolResults.length}`);
       for (const r of toolResults) {
