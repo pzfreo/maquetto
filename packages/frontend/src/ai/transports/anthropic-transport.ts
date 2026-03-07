@@ -4,31 +4,23 @@ import { createTestCodeTool, type CompileFn } from '../tools/test-code-tool';
 import { DataUrlSafeChatTransport } from './data-url-safe-transport';
 
 /**
- * The URL of the edge proxy for Anthropic API requests.
- * Anthropic does not allow browser CORS, so requests must go through a proxy.
- *
- * For local development, this can point to a local proxy.
- * In production, deploy the api-proxy package and set this URL.
- */
-const ANTHROPIC_PROXY_URL =
-  import.meta.env.VITE_ANTHROPIC_PROXY_URL ?? '/api/anthropic';
-
-/**
- * Creates a ChatTransport that talks to Anthropic Claude via an edge proxy.
- * The proxy forwards requests to api.anthropic.com with the user's API key.
- *
- * Note: If no proxy is available, this will attempt direct connection which
- * will fail due to CORS. Users should set VITE_ANTHROPIC_PROXY_URL.
+ * Creates a ChatTransport that talks directly to Anthropic Claude.
+ * Uses the `anthropic-dangerous-direct-browser-access` header to bypass
+ * CORS restrictions. This is safe because the API key is BYOK — the user
+ * provides their own key and it's sent directly to Anthropic, not through
+ * any intermediary.
  */
 export function createAnthropicTransport(
   credential: string,
   systemPrompt: string,
   compileFn: CompileFn | null,
 ) {
-  console.log(`[Anthropic] Initializing Claude transport (proxy: ${ANTHROPIC_PROXY_URL})`);
+  console.log('[Anthropic] Initializing Claude transport (direct browser access)');
   const anthropic = createAnthropic({
     apiKey: credential,
-    baseURL: ANTHROPIC_PROXY_URL,
+    headers: {
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
   });
 
   const tools = compileFn
