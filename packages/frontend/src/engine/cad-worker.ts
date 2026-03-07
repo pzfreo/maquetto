@@ -342,7 +342,13 @@ def _execute_and_export(code_str, quality_level):
             print(f'[export] Found shape: {name} ({type(obj).__name__})')
             shapes.append((name, obj))
         # Also check for BuildPart context manager results
+        # Skip BuildPart with non-ADD mode (e.g. SUBTRACT, INTERSECT) —
+        # these are operations on a parent part, not standalone shapes.
         elif hasattr(obj, 'part') and isinstance(getattr(obj, 'part', None), (Shape, Part)):
+            mode = getattr(obj, 'mode', None)
+            if mode is not None and hasattr(mode, 'name') and mode.name != 'ADD':
+                print(f'[export] Skipping {name} (mode={mode.name}, child of parent BuildPart)')
+                continue
             print(f'[export] Found BuildPart result: {name}')
             shapes.append((name, obj.part))
         elif hasattr(obj, 'sketch') and isinstance(getattr(obj, 'sketch', None), (Shape, Sketch)):
