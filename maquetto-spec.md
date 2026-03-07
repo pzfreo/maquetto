@@ -12,8 +12,9 @@ final piece. That is exactly what this tool enables: rapid, AI-assisted
 exploration of 3D form.
 
 Everything runs in the browser. Python executes via Pyodide + OCP.wasm
-in a Web Worker. There is no backend server. The only server component
-is an optional thin proxy for AI providers that require one.
+in a Web Worker. User authentication and cloud storage are provided by
+Supabase. The only other server component is an optional thin proxy for
+AI providers that require one.
 
 
 ## Architecture
@@ -65,27 +66,36 @@ The useChat hook from @ai-sdk/react manages conversation state,
 streaming, and message history. Provider selection is a user setting
 persisted in localStorage.
 
-### Default Provider: Google Gemini (OAuth)
+### Default Provider: Google Gemini (via Supabase OAuth)
 
 Lowest friction onboarding. Users click "Sign in with Google" and
-are immediately productive.
+are immediately productive — a single OAuth flow provides both app
+authentication and Gemini API access.
 
 - Package: @ai-sdk/google
-- Auth: OAuth 2.0 via standard Google sign-in flow
-- User grants the generativelanguage.googleapis.com scope
-- Access token passed to the Vercel AI SDK's Google provider
+- Auth: Supabase Google OAuth with additional Gemini scope
+- Supabase configured to request the
+  `https://www.googleapis.com/auth/generative-language.generativelanguage`
+  scope alongside standard profile/email scopes
+- On sign-in, Supabase stores the Google `provider_token` on the session
+- This provider token is passed to the Vercel AI SDK's Google provider
+  for Gemini API calls
 - Usage bills to the user's own Google Cloud account
 - Free tier available (rate-limited, not all regions)
-- No proxy or server needed — calls go directly to Google
+- No proxy needed — calls go directly to Google
+- Token refresh: Supabase handles Google token refresh automatically
+  via `provider_refresh_token`; the app re-reads `session.provider_token`
+  before each AI request
 
 ### Power User Provider: Anthropic Claude (BYOK)
 
 Better code generation quality for Build123d, but requires manual
-API key setup.
+API key setup. Available to any authenticated user (Google or GitHub).
 
 - Package: @ai-sdk/anthropic
 - Auth: user pastes API key from console.anthropic.com
-- Key stored in localStorage, never sent to any third party
+- Key stored in Supabase user metadata (encrypted at rest) so it
+  persists across devices; also cached in memory for the session
 - Requires a minimal stateless edge proxy for CORS forwarding
 - The proxy must never log or store the key — it receives it in a
   request header and forwards to Anthropic's API
@@ -263,21 +273,92 @@ or Cmd+Enter). Consider optional auto-compile with debounce as a
 user setting, but default to manual for the prototype.
 
 
+## Authentication and Cloud Storage
+
+### Supabase Auth (Google + GitHub)
+
+User authentication is handled by Supabase with two OAuth providers:
+
+- **Google**: Primary sign-in. Provides both app auth and Gemini API
+  access via the OAuth provider token. One click to sign in and start
+  using AI immediately.
+- **GitHub**: Alternative sign-in for developers who prefer it. Provides
+  app auth and cloud save only — AI providers must be configured
+  separately via BYOK.
+
+Authentication state is managed in a Zustand auth slice that wraps
+the Supabase client. The slice exposes: `user`, `session`,
+`isAuthenticated`, `signInWithGoogle()`, `signInWithGitHub()`,
+`signOut()`, and `getProviderToken()` (for Gemini access).
+
+### Auth Flow
+
+1. Supabase client initialized with project URL and anon key (public,
+   safe for frontend — set via `VITE_SUPABASE_URL` and
+   `VITE_SUPABASE_ANON_KEY` environment variables)
+2. `onAuthStateChange` listener updates the auth slice on sign-in,
+   sign-out, and token refresh
+3. On Google sign-in, the Gemini provider is auto-configured using
+   `session.provider_token` — no manual API key entry needed
+4. On GitHub sign-in, user is prompted to optionally configure AI
+   providers (BYOK for Gemini and/or Claude)
+5. Anthropic API keys are stored in Supabase user metadata
+   (`auth.users.raw_user_meta_data`) so they persist across devices
+
+### Cloud Save/Load
+
+Supabase Postgres stores user projects:
+
+```sql
+create table projects (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) not null,
+  name text not null,
+  code text not null default '',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- Row Level Security: users can only access their own projects
+alter table projects enable row level security;
+create policy "Users can CRUD own projects"
+  on projects for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+```
+
+UI changes for cloud save:
+- Save/Load buttons in the toolbar (visible when authenticated)
+- Project name displayed in the header (editable)
+- Auto-save on compile (debounced, updates `updated_at`)
+- "My Projects" dropdown listing saved projects sorted by updated_at
+- Unauthenticated users continue to use localStorage only
+
+### Unauthenticated Fallback
+
+The app remains fully usable without signing in:
+- Editor, viewport, and AI chat work with BYOK API keys
+- Code is stored in localStorage only (no cloud persistence)
+- "Sign in to save to cloud" prompt shown non-intrusively
+
+
 ## First-Run Experience
 
 On first visit, before the user sees the full IDE:
 
 1. Brief splash/welcome explaining what Maquetto is
-2. AI provider setup:
-   - Primary option: "Sign in with Google" button (Gemini OAuth)
-   - Secondary option: "Use Anthropic API key" with a text field
-   - "Skip" option to use the editor without AI
-3. Once authenticated, show the IDE with a starter Build123d script
-   (e.g., a simple box with a fillet) and auto-compile it when the
-   engine is ready
+2. Sign-in options:
+   - Primary: "Sign in with Google" button — provides auth + Gemini AI
+   - Secondary: "Sign in with GitHub" button — provides auth, AI
+     configured separately
+   - "Continue without account" — editor + BYOK only, no cloud save
+3. For Google sign-in: user is immediately ready (Gemini auto-configured)
+4. For GitHub sign-in: optional BYOK setup for AI providers
+5. Show the IDE with a starter Build123d script and auto-compile when
+   the engine is ready
 
-Provider settings are changeable later from a settings icon in the
-toolbar.
+Provider settings and account management are accessible from a settings
+icon in the toolbar.
 
 
 ## Project Structure
@@ -303,6 +384,8 @@ Monorepo with pnpm workspaces:
 
 Zustand store organized by domain:
 
+- Auth state: Supabase user, session, provider token, sign-in/out
+  actions, isAuthenticated flag
 - Engine state: current loading phase, progress, ready flag
 - Editor state: current code, dirty flag
 - Compilation state: status (idle/compiling/success/error), parts
@@ -310,6 +393,8 @@ Zustand store organized by domain:
 - Viewport state: selected part IDs, camera position description
 - Chat state: message history, streaming flag, active provider
 - Settings state: selected AI provider, API keys, quality preference
+- Projects state: current project (id, name), save/load actions,
+  project list for the "My Projects" dropdown
 
 
 ## Testing Strategy
@@ -357,20 +442,20 @@ rate limiting, and that API keys are never logged.
   completions
 - Three.js viewport with PBR rendering, part labels, part selection
 - AI chat with Vercel AI SDK, streaming, code blocks, Apply to Editor
-- Google Gemini provider with OAuth sign-in flow
-- Anthropic Claude provider with BYOK and edge proxy
+- Supabase auth with Google OAuth (login + Gemini token) and GitHub
+- Google Gemini provider using Supabase `provider_token`
+- Anthropic Claude provider with BYOK (key stored in user metadata)
 - Viewport screenshot capture for AI vision context
-- First-run provider setup screen
+- Cloud save/load of projects via Supabase Postgres with RLS
+- First-run sign-in and provider setup screen
 - Tests for engine contract, hooks, and components
 
 ### Do Not Build
 
-- File save/load or project management
 - Export to STL, STEP, or 3MF
-- User authentication beyond AI provider auth
 - Multiple files or editor tabs
 - Undo/redo
-- Settings panel beyond provider selection
+- Settings panel beyond provider selection and account
 - Face or edge selection (part-level only for prototype)
 - Collaboration or sharing features
 
@@ -383,6 +468,7 @@ rate limiting, and that API keys are never logged.
 - Three.js via @react-three/fiber 9+ and @react-three/drei
 - Monaco Editor via @monaco-editor/react
 - Vercel AI SDK: @ai-sdk/react, @ai-sdk/google, @ai-sdk/anthropic
+- Supabase: @supabase/supabase-js for auth and Postgres cloud storage
 - Zustand 5+ for state management
 - Vitest + React Testing Library for tests
 - Pyodide (latest, loaded from CDN)
