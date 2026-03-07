@@ -7,6 +7,7 @@ import { CADModel } from './CADModel';
 import { PartLabels } from './PartLabels';
 import { PartsPanel } from './PartsPanel';
 import { ViewportHelper } from './ViewportHelper';
+import { LogoModel } from './LogoModel';
 
 export function ViewportPanel() {
   const gltfData = useAppStore((s) => s.gltfData);
@@ -34,7 +35,7 @@ export function ViewportPanel() {
           cellColor="#333355"
           sectionColor="#444466"
         />
-        {gltfData && <CADModel data={gltfData} />}
+        {gltfData ? <CADModel data={gltfData} /> : <LogoModel />}
         <PartLabels />
         <ViewportHelper />
       </Canvas>
