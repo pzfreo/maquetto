@@ -1,7 +1,7 @@
 import { useState, useRef, type KeyboardEvent } from 'react';
 
 interface ChatInputProps {
-  onSend: (message: string) => void;
+  onSend: (message: string, options?: { includeScreenshot?: boolean }) => void;
   disabled?: boolean;
   isStreaming?: boolean;
   onStop?: () => void;
@@ -11,15 +11,25 @@ export function ChatInput({ onSend, disabled, isStreaming, onStop }: ChatInputPr
   const [input, setInput] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const resetInput = () => {
+    setInput('');
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
+  };
+
   const handleSend = () => {
     const trimmed = input.trim();
     if (!trimmed) return;
     onSend(trimmed);
-    setInput('');
-    // Reset textarea height
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-    }
+    resetInput();
+  };
+
+  const handleSendWithScreenshot = () => {
+    const trimmed = input.trim();
+    if (!trimmed) return;
+    onSend(trimmed, { includeScreenshot: true });
+    resetInput();
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -92,22 +102,40 @@ export function ChatInput({ onSend, disabled, isStreaming, onStop }: ChatInputPr
           Stop
         </button>
       ) : (
-        <button
-          onClick={handleSend}
-          disabled={disabled || !input.trim()}
-          style={{
-            padding: '8px 14px',
-            borderRadius: '6px',
-            border: 'none',
-            background: input.trim() && !disabled ? '#4a9eff' : '#333',
-            color: input.trim() && !disabled ? '#fff' : '#888',
-            fontSize: '13px',
-            cursor: input.trim() && !disabled ? 'pointer' : 'not-allowed',
-            flexShrink: 0,
-          }}
-        >
-          Send
-        </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flexShrink: 0 }}>
+          <button
+            onClick={handleSend}
+            disabled={disabled || !input.trim()}
+            style={{
+              padding: '8px 14px',
+              borderRadius: '6px',
+              border: 'none',
+              background: input.trim() && !disabled ? '#4a9eff' : '#333',
+              color: input.trim() && !disabled ? '#fff' : '#888',
+              fontSize: '13px',
+              cursor: input.trim() && !disabled ? 'pointer' : 'not-allowed',
+            }}
+          >
+            Send
+          </button>
+          <button
+            onClick={handleSendWithScreenshot}
+            disabled={disabled || !input.trim()}
+            title="Send message with a screenshot of the current viewport"
+            style={{
+              padding: '4px 8px',
+              borderRadius: '4px',
+              border: 'none',
+              background: input.trim() && !disabled ? '#2a4a6e' : '#2a2a3e',
+              color: input.trim() && !disabled ? '#8bc4ff' : '#555',
+              fontSize: '10px',
+              cursor: input.trim() && !disabled ? 'pointer' : 'not-allowed',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            + Screenshot
+          </button>
+        </div>
       )}
     </div>
   );

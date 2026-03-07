@@ -58,7 +58,7 @@ export function useCADChat(engine: CadEngine | null) {
     transport: (transport ?? noopTransport) as any,
   });
 
-  const sendWithContext = useCallback((text: string) => {
+  const sendWithContext = useCallback((text: string, options?: { includeScreenshot?: boolean }) => {
     if (!transport) {
       console.warn('[Chat] Send blocked — no provider configured');
       return;
@@ -72,36 +72,36 @@ export function useCADChat(engine: CadEngine | null) {
       screenshotDataUrl: null,
     });
 
-    console.log(`[Chat] Sending message (${text.length} chars, ${parts.length} parts, ${selectedPartIds.length} selected)`);
+    console.log(`[Chat] Sending message (${text.length} chars, ${parts.length} parts, ${selectedPartIds.length} selected, screenshot=${!!options?.includeScreenshot})`);
 
     const messageWithContext = context
       ? `${text}\n\n---\n${context}`
       : text;
 
-    // Capture viewport screenshot and attach as a File.
-    // The AI SDK's FileUIPart doesn't support data: URLs, so we convert
-    // the canvas data URL to a File via DataTransfer to get a real FileList.
+    // Capture viewport screenshot via store-registered function and attach as a File.
     let screenshotFiles: FileList | undefined;
-    try {
-      const canvas = document.querySelector('canvas');
-      if (canvas) {
-        const dataUrl = canvas.toDataURL('image/png');
-        const base64 = dataUrl.split(',')[1];
-        if (base64) {
-          const binary = atob(base64);
-          const bytes = new Uint8Array(binary.length);
-          for (let i = 0; i < binary.length; i++) {
-            bytes[i] = binary.charCodeAt(i);
+    if (options?.includeScreenshot) {
+      try {
+        const capture = useAppStore.getState().captureScreenshot;
+        const dataUrl = capture?.();
+        if (dataUrl) {
+          const base64 = dataUrl.split(',')[1];
+          if (base64) {
+            const binary = atob(base64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+              bytes[i] = binary.charCodeAt(i);
+            }
+            const file = new File([bytes], 'viewport.png', { type: 'image/png' });
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            screenshotFiles = dt.files;
+            console.log('[Chat] Attaching viewport screenshot');
           }
-          const file = new File([bytes], 'viewport.png', { type: 'image/png' });
-          const dt = new DataTransfer();
-          dt.items.add(file);
-          screenshotFiles = dt.files;
-          console.log('[Chat] Attaching viewport screenshot');
         }
+      } catch {
+        // Canvas capture can fail due to tainted canvas or security restrictions
       }
-    } catch {
-      // Canvas capture can fail due to tainted canvas or security restrictions
     }
 
     chat.sendMessage({
