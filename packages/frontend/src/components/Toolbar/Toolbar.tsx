@@ -50,6 +50,7 @@ export function Toolbar({ onCompile, onRetryEngine }: ToolbarProps) {
     resetCode();
     clearVersionHistory();
     clearCompilation();
+    useAppStore.getState().clearChat?.();
   };
 
   const handleGoogleSignIn = async () => {
