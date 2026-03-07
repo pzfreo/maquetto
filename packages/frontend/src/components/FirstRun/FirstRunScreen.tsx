@@ -108,7 +108,7 @@ export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {/* Google Sign In (Primary — provides auth + Gemini) */}
+          {/* Google Sign In (for auth / cloud save) */}
           <button
             onClick={handleGoogleSignIn}
             style={{
@@ -136,7 +136,7 @@ export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
             Sign in with Google
           </button>
           <p style={{ fontSize: '11px', color: '#666', margin: '0' }}>
-            Sign in and start using AI immediately — no API key needed
+            Sign in to save your work to the cloud
           </p>
 
           {/* Divider */}
@@ -149,11 +149,11 @@ export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
             }}
           >
             <div style={{ flex: 1, height: '1px', background: '#333' }} />
-            <span style={{ fontSize: '12px', color: '#666' }}>or use an API key</span>
+            <span style={{ fontSize: '12px', color: '#666' }}>set up AI assistant</span>
             <div style={{ flex: 1, height: '1px', background: '#333' }} />
           </div>
 
-          {/* Gemini API Key (alternative) */}
+          {/* Gemini API Key (free from aistudio.google.com) */}
           <div>
             {!showGeminiKeyInput ? (
               <button

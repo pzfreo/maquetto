@@ -185,7 +185,7 @@ export function ProviderSettingsModal({
               {aiProvider.type === 'none'
                 ? 'None'
                 : aiProvider.type === 'google'
-                  ? authUser?.provider === 'google' ? 'Google Gemini (via sign-in)' : 'Google Gemini (API key)'
+                  ? 'Google Gemini (API key)'
                   : 'Anthropic Claude'}
             </span>
             {aiProvider.type !== 'none' && (

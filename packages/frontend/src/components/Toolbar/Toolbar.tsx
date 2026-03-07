@@ -3,7 +3,6 @@ import { useAppStore } from '../../store';
 import { EngineStatusBadge } from './EngineStatusBadge';
 import { ProviderSettingsModal } from '../Settings/ProviderSettingsModal';
 import { signInWithGoogle } from '../../lib/auth-actions';
-import type { AIProviderType } from '@maquetto/api-types';
 
 interface ToolbarProps {
   onCompile?: () => void;
@@ -16,87 +15,41 @@ export function Toolbar({ onCompile, onRetryEngine }: ToolbarProps) {
   const qualityLevel = useAppStore((s) => s.qualityLevel);
   const setQualityLevel = useAppStore((s) => s.setQualityLevel);
   const aiProvider = useAppStore((s) => s.aiProvider);
-  const setAIProvider = useAppStore((s) => s.setAIProvider);
   const authUser = useAppStore((s) => s.authUser);
-  const providerToken = useAppStore((s) => s.providerToken);
   const resetCode = useAppStore((s) => s.resetCode);
   const clearVersionHistory = useAppStore((s) => s.clearVersionHistory);
   const clearCompilation = useAppStore((s) => s.clearCompilation);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
-  const [aiMenuOpen, setAiMenuOpen] = useState(false);
   const fileMenuRef = useRef<HTMLDivElement>(null);
-  const aiMenuRef = useRef<HTMLDivElement>(null);
 
   const isReady = enginePhase === 'ready';
   const isCompiling = compilationStatus === 'compiling';
 
-  // Determine which AI providers are available
-  const hasGoogleOAuth = authUser?.provider === 'google' && !!providerToken;
-  const hasGoogleKey = aiProvider.type === 'google' && !hasGoogleOAuth;
-  const hasAnthropicKey = !!localStorage.getItem('maquetto:anthropic-key');
-
-  // Check if there's a stored Anthropic key (persisted separately from active provider)
-  const storedAnthropicKey = useRef<string | null>(null);
-  useEffect(() => {
-    const stored = localStorage.getItem('maquetto:ai-provider');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        if (parsed.type === 'anthropic' && parsed.credential) {
-          storedAnthropicKey.current = parsed.credential;
-        }
-      } catch { /* ignore */ }
-    }
-  }, [aiProvider]);
-
-  const availableProviders: { type: AIProviderType; label: string; active: boolean }[] = [];
-  if (hasGoogleOAuth || hasGoogleKey) {
-    availableProviders.push({
-      type: 'google',
-      label: hasGoogleOAuth ? 'Gemini (Google)' : 'Gemini (API key)',
-      active: aiProvider.type === 'google',
-    });
-  }
-  if (hasAnthropicKey || aiProvider.type === 'anthropic') {
-    availableProviders.push({
-      type: 'anthropic',
-      label: 'Claude (API key)',
-      active: aiProvider.type === 'anthropic',
-    });
-  }
-
-  const activeProvider = availableProviders.find((p) => p.active);
+  // AI provider display
+  const providerLabel = aiProvider.type === 'google'
+    ? 'Gemini'
+    : aiProvider.type === 'anthropic'
+      ? 'Claude'
+      : null;
 
   // Close menus on outside click
   useEffect(() => {
-    if (!fileMenuOpen && !aiMenuOpen) return;
+    if (!fileMenuOpen) return;
     const handleClick = (e: MouseEvent) => {
-      if (fileMenuOpen && fileMenuRef.current && !fileMenuRef.current.contains(e.target as Node)) {
+      if (fileMenuRef.current && !fileMenuRef.current.contains(e.target as Node)) {
         setFileMenuOpen(false);
-      }
-      if (aiMenuOpen && aiMenuRef.current && !aiMenuRef.current.contains(e.target as Node)) {
-        setAiMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, [fileMenuOpen, aiMenuOpen]);
+  }, [fileMenuOpen]);
 
   const handleNew = () => {
     setFileMenuOpen(false);
     resetCode();
     clearVersionHistory();
     clearCompilation();
-  };
-
-  const handleSwitchProvider = (type: AIProviderType) => {
-    setAiMenuOpen(false);
-    if (type === 'google' && hasGoogleOAuth) {
-      setAIProvider({ type: 'google', credential: providerToken! });
-    } else if (type === 'anthropic' && storedAnthropicKey.current) {
-      setAIProvider({ type: 'anthropic', credential: storedAnthropicKey.current });
-    }
   };
 
   const handleGoogleSignIn = async () => {
@@ -220,48 +173,23 @@ export function Toolbar({ onCompile, onRetryEngine }: ToolbarProps) {
 
       <div style={{ flex: 1 }} />
 
-      {/* AI provider indicator / switcher */}
-      {activeProvider ? (
-        <div ref={aiMenuRef} style={{ position: 'relative' }}>
-          <button
-            onClick={() => availableProviders.length > 1 ? setAiMenuOpen(!aiMenuOpen) : setSettingsOpen(true)}
-            style={{
-              padding: '3px 10px',
-              borderRadius: '4px',
-              border: '1px solid',
-              borderColor: aiProvider.type === 'google' ? '#4285f4' : '#d97706',
-              background: 'transparent',
-              color: aiProvider.type === 'google' ? '#4285f4' : '#d97706',
-              fontSize: '11px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-            }}
-          >
-            {activeProvider.label}
-            {availableProviders.length > 1 && <span style={{ fontSize: '9px' }}>▼</span>}
-          </button>
-          {aiMenuOpen && availableProviders.length > 1 && (
-            <div style={dropdownStyle}>
-              {availableProviders.map((p) => (
-                <button
-                  key={p.type}
-                  onClick={() => handleSwitchProvider(p.type)}
-                  style={{
-                    ...menuItemStyle,
-                    color: p.active ? '#fff' : '#aaa',
-                    fontWeight: p.active ? 600 : 400,
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = '#2a2a4e'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                >
-                  {p.active ? '● ' : '○ '}{p.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+      {/* AI provider indicator */}
+      {providerLabel ? (
+        <button
+          onClick={() => setSettingsOpen(true)}
+          style={{
+            padding: '3px 10px',
+            borderRadius: '4px',
+            border: '1px solid',
+            borderColor: aiProvider.type === 'google' ? '#4285f4' : '#d97706',
+            background: 'transparent',
+            color: aiProvider.type === 'google' ? '#4285f4' : '#d97706',
+            fontSize: '11px',
+            cursor: 'pointer',
+          }}
+        >
+          {providerLabel}
+        </button>
       ) : (
         <span style={{ fontSize: '11px', color: '#666' }}>No AI</span>
       )}
