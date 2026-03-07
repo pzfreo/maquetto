@@ -16,11 +16,14 @@ export type {
 export type { WorkerRequest, WorkerResponse } from './worker-protocol';
 
 export type {
+  AIModelOption,
   AIProviderConfig,
   AIProviderType,
   CADContext,
   CodeBlock,
 } from './ai';
+
+export { AI_MODELS, DEFAULT_MODEL } from './ai';
 
 export type {
   AppStore,

@@ -22,9 +22,9 @@ export function createTransport(
   console.log(`[Provider] Creating transport for: ${config.type}${customSystemPrompt ? ' (custom prompt)' : ''}`);
   switch (config.type) {
     case 'google':
-      return createGoogleTransport(config.credential, systemPrompt, compileFn);
+      return createGoogleTransport(config.credential, systemPrompt, compileFn, config.modelId);
     case 'anthropic':
-      return createAnthropicTransport(config.credential, systemPrompt, compileFn);
+      return createAnthropicTransport(config.credential, systemPrompt, compileFn, config.modelId);
     default:
       console.warn(`[Provider] Unknown provider type: ${config.type}`);
       return null;

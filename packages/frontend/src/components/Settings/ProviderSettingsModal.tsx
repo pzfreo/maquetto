@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { AI_MODELS, DEFAULT_MODEL } from '@maquetto/api-types';
+import type { AIProviderType } from '@maquetto/api-types';
 import { useAppStore } from '../../store';
 import { signInWithGoogle } from '../../lib/auth-actions';
 import { CAD_SYSTEM_PROMPT } from '../../ai/system-prompt';
@@ -277,6 +279,32 @@ export function ProviderSettingsModal({
           <p style={{ fontSize: '11px', color: '#666', margin: '8px 0 0 0' }}>
             Keys are stored locally in your browser and never sent to our servers.
           </p>
+
+          {/* Model selector */}
+          {aiProvider.type !== 'none' && (
+            <div style={{ marginTop: '12px' }}>
+              <div style={{ fontSize: '11px', color: '#888', marginBottom: '6px' }}>Model</div>
+              <select
+                value={aiProvider.modelId || DEFAULT_MODEL[aiProvider.type as Exclude<AIProviderType, 'none'>]}
+                onChange={(e) => setAIProvider({ ...aiProvider, modelId: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 10px',
+                  borderRadius: '6px',
+                  border: '1px solid #444',
+                  background: '#0d0d1a',
+                  color: '#e0e0e0',
+                  fontSize: '13px',
+                  outline: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                {AI_MODELS[aiProvider.type as Exclude<AIProviderType, 'none'>].map((m) => (
+                  <option key={m.id} value={m.id}>{m.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* System Prompt section */}

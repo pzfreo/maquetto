@@ -13,8 +13,10 @@ export function createGoogleTransport(
   credential: string,
   systemPrompt: string,
   compileFn: CompileFn | null,
+  modelId?: string,
 ) {
-  console.log('[Google] Initializing Gemini transport (model: gemini-2.0-flash)');
+  const resolvedModel = modelId || 'gemini-2.0-flash';
+  console.log(`[Google] Initializing Gemini transport (model: ${resolvedModel})`);
 
   const google = createGoogleGenerativeAI({ apiKey: credential });
 
@@ -26,7 +28,7 @@ export function createGoogleTransport(
   let lastTestFailed = true;
 
   const agent = new ToolLoopAgent({
-    model: google('gemini-2.0-flash'),
+    model: google(resolvedModel),
     instructions: systemPrompt,
     ...(tools && { tools }),
     stopWhen: stepCountIs(6),

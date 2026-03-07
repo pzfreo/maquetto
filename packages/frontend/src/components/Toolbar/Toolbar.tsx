@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
+import { AI_MODELS, DEFAULT_MODEL } from '@maquetto/api-types';
+import type { AIProviderType } from '@maquetto/api-types';
 import { useAppStore } from '../../store';
 import { EngineStatusBadge } from './EngineStatusBadge';
 import { ProviderSettingsModal } from '../Settings/ProviderSettingsModal';
@@ -12,8 +14,6 @@ interface ToolbarProps {
 export function Toolbar({ onCompile, onRetryEngine }: ToolbarProps) {
   const enginePhase = useAppStore((s) => s.engineStatus.phase);
   const compilationStatus = useAppStore((s) => s.compilationStatus);
-  const qualityLevel = useAppStore((s) => s.qualityLevel);
-  const setQualityLevel = useAppStore((s) => s.setQualityLevel);
   const aiProvider = useAppStore((s) => s.aiProvider);
   const authUser = useAppStore((s) => s.authUser);
   const resetCode = useAppStore((s) => s.resetCode);
@@ -26,12 +26,14 @@ export function Toolbar({ onCompile, onRetryEngine }: ToolbarProps) {
   const isReady = enginePhase === 'ready';
   const isCompiling = compilationStatus === 'compiling';
 
-  // AI provider display
-  const providerLabel = aiProvider.type === 'google'
-    ? 'Gemini'
-    : aiProvider.type === 'anthropic'
-      ? 'Claude'
-      : null;
+  // AI provider + model display
+  const providerLabel = (() => {
+    if (aiProvider.type === 'none') return null;
+    const providerType = aiProvider.type as Exclude<AIProviderType, 'none'>;
+    const modelId = aiProvider.modelId || DEFAULT_MODEL[providerType];
+    const model = AI_MODELS[providerType].find((m) => m.id === modelId);
+    return model?.label ?? modelId;
+  })();
 
   // Close menus on outside click
   useEffect(() => {
@@ -195,24 +197,6 @@ export function Toolbar({ onCompile, onRetryEngine }: ToolbarProps) {
         <span style={{ fontSize: '11px', color: '#666' }}>No AI</span>
       )}
 
-      <select
-        value={qualityLevel}
-        onChange={(e) =>
-          setQualityLevel(e.target.value as 'draft' | 'normal' | 'high')
-        }
-        style={{
-          padding: '3px 8px',
-          borderRadius: '4px',
-          border: '1px solid #444',
-          background: '#222',
-          color: '#ccc',
-          fontSize: '12px',
-        }}
-      >
-        <option value="draft">Draft</option>
-        <option value="normal">Normal</option>
-        <option value="high">High</option>
-      </select>
 
       {/* Auth / sign-in */}
       {authUser ? (
