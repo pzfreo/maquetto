@@ -8,7 +8,16 @@
   ],
   "headers": [
     {
-      "source": "/((?!api/).*)",
+      "source": "/oauth-callback.html",
+      "headers": [
+        {
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "unsafe-none"
+        }
+      ]
+    },
+    {
+      "source": "/((?!api/)(?!oauth-callback).*)",
       "headers": [
         {
           "key": "Cross-Origin-Embedder-Policy",
