@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html><head><title>Signing in...</title></head>
+<body>
+<div style="font-family:system-ui;padding:40px;text-align:center;color:#666;">
+  Signing in...
+</div>
+<script>
+(function() {
+  // Supabase may return tokens in the hash (implicit flow) or code in the query (PKCE)
+  var hashParams = new URLSearchParams(window.location.hash.substring(1));
+  var queryParams = new URLSearchParams(window.location.search);
+
+  var accessToken = hashParams.get('access_token');
+  var refreshToken = hashParams.get('refresh_token');
+  var providerToken = hashParams.get('provider_token');
+  var providerRefreshToken = hashParams.get('provider_refresh_token');
+  var code = queryParams.get('code');
+
+  var result = null;
+  if (accessToken && refreshToken) {
+    result = {
+      type: 'oauth-result',
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      provider_token: providerToken,
+      provider_refresh_token: providerRefreshToken
+    };
+  } else if (code) {
+    result = { type: 'oauth-result', code: code };
+  }
+
+  if (result) {
+    if (window.opener) {
+      // Preferred: send via postMessage (tokens never touch storage)
+      try {
+        window.opener.postMessage(result, window.location.origin);
+      } catch(e) {}
+    } else {
+      // Fallback for redirect flow (not a popup) — brief localStorage use
+      try {
+        localStorage.setItem('oauth-result', JSON.stringify(result));
+      } catch(e) {}
+    }
+  }
+
+  // Strip tokens from URL before any redirect
+  if (window.location.hash) {
+    history.replaceState(null, '', window.location.pathname);
+  }
+
+  // Close popup, or redirect to main page if not a popup
+  setTimeout(function() {
+    try { window.close(); } catch(e) {}
+    setTimeout(function() { window.location.href = '/'; }, 500);
+  }, 300);
+})();
+</script>
+</body>
+</html>

@@ -20,7 +20,24 @@ export default defineConfig({
     __BUILD_NUMBER__: JSON.stringify(buildNumber),
     __COMMIT_HASH__: JSON.stringify(commitHash),
   },
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: 'oauth-callback-coop',
+      configureServer(server) {
+        // The OAuth callback page needs COOP: unsafe-none so window.opener
+        // survives the cross-origin Google redirect. All other pages keep
+        // COOP: same-origin for SharedArrayBuffer (Pyodide).
+        server.middlewares.use((req, res, next) => {
+          if (req.url?.startsWith('/oauth-callback')) {
+            res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
+            res.removeHeader('Cross-Origin-Embedder-Policy');
+          }
+          next();
+        });
+      },
+    },
+  ],
   build: {
     modulePreload: false,
   },
