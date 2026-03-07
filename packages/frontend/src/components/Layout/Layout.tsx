@@ -33,6 +33,11 @@ export function Layout({ onCompile, onRetryEngine, engine }: LayoutProps) {
           </>
         )}
       </div>
+      <footer className="layout-footer">
+        <a href="/privacy.html" target="_blank" rel="noopener noreferrer">Privacy</a>
+        <span className="layout-footer-sep">·</span>
+        <a href="/terms.html" target="_blank" rel="noopener noreferrer">Terms</a>
+      </footer>
     </div>
   );
 }

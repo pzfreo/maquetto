@@ -40,3 +40,28 @@
 .layout-panels-expanded {
   grid-template-columns: 1fr;
 }
+
+.layout-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 0;
+  font-size: 11px;
+  background: #16162a;
+  border-top: 1px solid #2a2a3e;
+  flex-shrink: 0;
+}
+
+.layout-footer a {
+  color: #666;
+  text-decoration: none;
+}
+
+.layout-footer a:hover {
+  color: #4a9eff;
+}
+
+.layout-footer-sep {
+  color: #444;
+}
