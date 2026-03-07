@@ -7,6 +7,27 @@ import type {
 } from './engine';
 import type { AIProviderConfig } from './ai';
 
+// --- Auth Slice ---
+
+export interface AuthUser {
+  readonly id: string;
+  readonly email: string | null;
+  readonly name: string | null;
+  readonly avatarUrl: string | null;
+  readonly provider: 'google' | 'github';
+}
+
+export interface AuthSlice {
+  readonly authUser: AuthUser | null;
+  readonly authLoading: boolean;
+  /** Google OAuth provider_token for Gemini API access */
+  readonly providerToken: string | null;
+  setAuthUser: (user: AuthUser | null) => void;
+  setAuthLoading: (loading: boolean) => void;
+  setProviderToken: (token: string | null) => void;
+  signOut: () => void;
+}
+
 // --- Engine Slice ---
 
 export interface EngineSlice {
@@ -93,7 +114,8 @@ export interface VersionHistorySlice {
 
 // --- Combined Store ---
 
-export type AppStore = EngineSlice &
+export type AppStore = AuthSlice &
+  EngineSlice &
   EditorSlice &
   CompilationSlice &
   ViewportSlice &

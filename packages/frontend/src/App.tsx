@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useEngine } from './hooks/useEngine';
 import { useCompilation } from './hooks/useCompilation';
+import { useAuthListener } from './hooks/useAuthListener';
 import { Layout } from './components/Layout/Layout';
 import {
   FirstRunScreen,
@@ -10,6 +11,7 @@ import { useAppStore } from './store';
 import './styles/global.css';
 
 export function App() {
+  useAuthListener();
   const engine = useEngine();
   const { triggerCompile } = useCompilation(engine);
   const showFirstRun = useFirstRun();

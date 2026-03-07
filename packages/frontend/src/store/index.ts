@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { AppStore } from '@maquetto/api-types';
+import { createAuthSlice } from './auth-slice';
 import { createEngineSlice } from './engine-slice';
 import { createEditorSlice } from './editor-slice';
 import { createCompilationSlice } from './compilation-slice';
@@ -8,6 +9,7 @@ import { createSettingsSlice } from './settings-slice';
 import { createVersionHistorySlice } from './version-history-slice';
 
 export const useAppStore = create<AppStore>()((...args) => ({
+  ...createAuthSlice(...args),
   ...createEngineSlice(...args),
   ...createEditorSlice(...args),
   ...createCompilationSlice(...args),

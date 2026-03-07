@@ -24,6 +24,8 @@ export type {
 
 export type {
   AppStore,
+  AuthSlice,
+  AuthUser,
   CodeVersion,
   CompilationSlice,
   CompilationStatus,

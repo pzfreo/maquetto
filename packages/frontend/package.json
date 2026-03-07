@@ -20,6 +20,7 @@
     "@monaco-editor/react": "^4.7.0",
     "@react-three/drei": "^10.0.0",
     "@react-three/fiber": "^9.0.0",
+    "@supabase/supabase-js": "^2.98.0",
     "ai": "^6.0.116",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
