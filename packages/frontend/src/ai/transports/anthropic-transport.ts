@@ -14,8 +14,10 @@ export function createAnthropicTransport(
   credential: string,
   systemPrompt: string,
   compileFn: CompileFn | null,
+  modelId?: string,
 ) {
-  console.log('[Anthropic] Initializing Claude transport (direct browser access)');
+  const resolvedModel = modelId || 'claude-sonnet-4-20250514';
+  console.log(`[Anthropic] Initializing Claude transport (model: ${resolvedModel})`);
   const anthropic = createAnthropic({
     apiKey: credential,
     headers: {
@@ -31,7 +33,7 @@ export function createAnthropicTransport(
   let lastTestFailed = true;
 
   const agent = new ToolLoopAgent({
-    model: anthropic('claude-sonnet-4-20250514'),
+    model: anthropic(resolvedModel),
     instructions: systemPrompt,
     ...(tools && { tools }),
     stopWhen: stepCountIs(6),

@@ -38,7 +38,7 @@ export function useCADChat(engine: CadEngine | null) {
     if (!engineRef.current) {
       throw new Error('Engine not ready');
     }
-    return engineRef.current.compile(codeToTest, 'draft');
+    return engineRef.current.compile(codeToTest, 'normal');
   }, []);
 
   // Include engine truthiness so the transport is recreated once the engine

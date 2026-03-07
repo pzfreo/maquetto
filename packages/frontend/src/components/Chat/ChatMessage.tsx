@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 interface ChatMessageProps {
   role: 'user' | 'assistant';
   content: string;
+  hasScreenshot?: boolean;
 }
 
 const PART_REF_REGEX = /@(\d+)/g;
@@ -33,7 +34,7 @@ function renderTextWithPartRefs(text: string): ReactNode[] {
   return parts;
 }
 
-export function ChatMessage({ role, content }: ChatMessageProps) {
+export function ChatMessage({ role, content, hasScreenshot }: ChatMessageProps) {
   const isUser = role === 'user';
   const [contextExpanded, setContextExpanded] = useState(false);
 
@@ -54,6 +55,25 @@ export function ChatMessage({ role, content }: ChatMessageProps) {
     rendered.push(
       <span key="user-text">{renderTextWithPartRefs(userText)}</span>,
     );
+    if (hasScreenshot) {
+      rendered.push(
+        <div
+          key="screenshot-badge"
+          style={{
+            display: 'inline-block',
+            marginTop: '4px',
+            padding: '2px 8px',
+            borderRadius: '4px',
+            background: 'rgba(74, 158, 255, 0.1)',
+            border: '1px solid rgba(74, 158, 255, 0.2)',
+            fontSize: '11px',
+            color: '#4a9eff',
+          }}
+        >
+          Screenshot attached
+        </div>,
+      );
+    }
     if (contextText) {
       rendered.push(
         <div key="context-toggle" style={{ marginTop: '4px' }}>
