@@ -1,4 +1,4 @@
-import { ToolLoopAgent } from 'ai';
+import { ToolLoopAgent, stepCountIs } from 'ai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createTestCodeTool, type CompileFn } from '../tools/test-code-tool';
 import { DataUrlSafeChatTransport } from './data-url-safe-transport';
@@ -25,7 +25,14 @@ export function createGoogleTransport(
   const agent = new ToolLoopAgent({
     model: google('gemini-2.0-flash'),
     instructions: systemPrompt,
-    ...(tools && { tools, maxSteps: 5 }),
+    ...(tools && { tools }),
+    stopWhen: stepCountIs(6),
+    onStepFinish({ stepNumber, finishReason, toolCalls, toolResults }) {
+      console.log(`[Google] Step ${stepNumber} finished: reason=${finishReason}, toolCalls=${toolCalls.length}, toolResults=${toolResults.length}`);
+      for (const r of toolResults) {
+        console.log(`[Google]   tool=${r.toolName} output=`, r.output);
+      }
+    },
   });
 
   return new DataUrlSafeChatTransport({ agent });

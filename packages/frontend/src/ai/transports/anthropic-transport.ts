@@ -1,4 +1,4 @@
-import { ToolLoopAgent } from 'ai';
+import { ToolLoopAgent, stepCountIs } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createTestCodeTool, type CompileFn } from '../tools/test-code-tool';
 import { DataUrlSafeChatTransport } from './data-url-safe-transport';
@@ -38,7 +38,14 @@ export function createAnthropicTransport(
   const agent = new ToolLoopAgent({
     model: anthropic('claude-sonnet-4-20250514'),
     instructions: systemPrompt,
-    ...(tools && { tools, maxSteps: 5 }),
+    ...(tools && { tools }),
+    stopWhen: stepCountIs(6),
+    onStepFinish({ stepNumber, finishReason, toolCalls, toolResults }) {
+      console.log(`[Anthropic] Step ${stepNumber} finished: reason=${finishReason}, toolCalls=${toolCalls.length}, toolResults=${toolResults.length}`);
+      for (const r of toolResults) {
+        console.log(`[Anthropic]   tool=${r.toolName} output=`, r.output);
+      }
+    },
   });
 
   return new DataUrlSafeChatTransport({ agent });
