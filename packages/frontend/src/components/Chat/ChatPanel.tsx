@@ -9,12 +9,24 @@ import type { CadEngine } from '@maquetto/api-types';
 
 /**
  * Extract text content from a UIMessage's parts array.
+ * Filters out file/image parts and any text that looks like base64 image data.
  */
 function getMessageText(parts: ReadonlyArray<{ type: string; text?: string }>): string {
   return parts
-    .filter((p): p is { type: 'text'; text: string } => p.type === 'text' && typeof p.text === 'string')
+    .filter((p): p is { type: 'text'; text: string } =>
+      p.type === 'text' && typeof p.text === 'string'
+      && !p.text.startsWith('data:image/')
+    )
     .map((p) => p.text)
     .join('');
+}
+
+/** Check if a UIMessage's parts contain any file/image attachments */
+function hasImageAttachment(parts: ReadonlyArray<{ type: string; text?: string }>): boolean {
+  return parts.some((p) =>
+    p.type === 'file' || p.type === 'image'
+    || (p.type === 'text' && typeof p.text === 'string' && p.text.startsWith('data:image/'))
+  );
 }
 
 interface ToolInvocationInfo {
@@ -285,6 +297,7 @@ export function ChatPanel({ onCompile, engine }: ChatPanelProps) {
               key={msg.id}
               role={msg.role as 'user' | 'assistant'}
               content={getMessageText(msg.parts)}
+              hasScreenshot={msg.role === 'user' && hasImageAttachment(msg.parts)}
             />
           ))}
 
