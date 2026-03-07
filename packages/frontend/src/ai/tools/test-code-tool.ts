@@ -1,6 +1,7 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import type { CompileResult } from '@maquetto/api-types';
+import { useAppStore } from '../../store';
 
 export type CompileFn = (code: string) => Promise<CompileResult>;
 
@@ -60,8 +61,11 @@ export function createTestCodeTool(compileFn: CompileFn) {
         }
         console.log('[test_code] Success:', result.parts.length, 'parts');
 
-        // Capture the viewport after successful compile so the AI can
-        // visually verify the result looks correct
+        // Push the result into the store so the viewport actually renders
+        // the new model before we capture the screenshot
+        useAppStore.getState().setCompileResult(result);
+
+        // Capture the viewport after the store update propagates to Three.js
         const screenshot = await captureViewportScreenshot();
 
         return {
