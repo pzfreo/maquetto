@@ -58,12 +58,16 @@ export function Toolbar({ onCompile, onRetryEngine }: ToolbarProps) {
     >
       <span
         style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
           fontWeight: 600,
           fontSize: '15px',
           color: '#e0e0e0',
           marginRight: '8px',
         }}
       >
+        <img src="/logo.svg" alt="" width={22} height={22} />
         Maquetto
       </span>
 

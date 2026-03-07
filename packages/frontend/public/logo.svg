@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4a9eff"/>
+      <stop offset="100%" stop-color="#7c5cfc"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#4a9eff" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#7c5cfc" stop-opacity="0.6"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Isometric cube — the "maquette" -->
+  <!-- Top face -->
+  <polygon points="256,80 400,152 256,224 112,152" fill="url(#g1)" opacity="0.95"/>
+  <!-- Left face -->
+  <polygon points="112,152 256,224 256,368 112,296" fill="#2a2a4e"/>
+  <!-- Right face -->
+  <polygon points="256,224 400,152 400,296 256,368" fill="#1a1a35"/>
+
+  <!-- Wireframe edges -->
+  <g stroke="url(#g1)" stroke-width="2.5" fill="none" stroke-linecap="round">
+    <!-- Top face edges -->
+    <line x1="256" y1="80" x2="400" y2="152"/>
+    <line x1="400" y1="152" x2="256" y2="224"/>
+    <line x1="256" y1="224" x2="112" y2="152"/>
+    <line x1="112" y1="152" x2="256" y2="80"/>
+    <!-- Vertical edges -->
+    <line x1="112" y1="152" x2="112" y2="296"/>
+    <line x1="400" y1="152" x2="400" y2="296"/>
+    <line x1="256" y1="224" x2="256" y2="368"/>
+    <!-- Bottom face edges -->
+    <line x1="112" y1="296" x2="256" y2="368"/>
+    <line x1="256" y1="368" x2="400" y2="296"/>
+  </g>
+
+  <!-- "M" letterform mapped onto the left face of the cube -->
+  <polyline points="148,285 148,213 184,267 220,249 220,321"
+    stroke="#4a9eff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
+
+  <!-- ">_" prompt mapped onto the right face of the cube -->
+  <g stroke="#7c5cfc" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.6">
+    <!-- ">" chevron -->
+    <polyline points="285,253 328,260 285,310"/>
+    <!-- "_" cursor -->
+    <line x1="335" y1="285" x2="371" y2="267"/>
+  </g>
+</svg>
