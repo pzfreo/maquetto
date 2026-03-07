@@ -6,14 +6,25 @@ import { DataUrlSafeChatTransport } from './data-url-safe-transport';
 /**
  * Creates a ChatTransport that talks directly to Google Gemini.
  * Google's Generative AI API supports CORS, so no proxy needed.
+ *
+ * @param credential - Either an API key or an OAuth access token
+ * @param isOAuthToken - If true, credential is a Supabase provider_token (OAuth bearer)
  */
 export function createGoogleTransport(
   credential: string,
   systemPrompt: string,
   compileFn: CompileFn | null,
+  isOAuthToken = false,
 ) {
-  console.log('[Google] Initializing Gemini transport (model: gemini-2.0-flash)');
-  const google = createGoogleGenerativeAI({ apiKey: credential });
+  console.log(`[Google] Initializing Gemini transport (model: gemini-2.0-flash, auth: ${isOAuthToken ? 'OAuth' : 'API key'})`);
+
+  // OAuth tokens use Authorization header; API keys use x-goog-api-key
+  const google = isOAuthToken
+    ? createGoogleGenerativeAI({
+        apiKey: '', // required param but unused when headers override auth
+        headers: { Authorization: `Bearer ${credential}` },
+      })
+    : createGoogleGenerativeAI({ apiKey: credential });
 
   const tools = compileFn
     ? { test_code: createTestCodeTool(compileFn) }

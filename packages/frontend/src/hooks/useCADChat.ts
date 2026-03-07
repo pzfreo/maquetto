@@ -24,6 +24,8 @@ const noopTransport = {
  */
 export function useCADChat(engine: CadEngine | null) {
   const aiProvider = useAppStore((s) => s.aiProvider);
+  const authUser = useAppStore((s) => s.authUser);
+  const providerToken = useAppStore((s) => s.providerToken);
   const code = useAppStore((s) => s.code);
   const parts = useAppStore((s) => s.parts);
   const selectedPartIds = useAppStore((s) => s.selectedPartIds);
@@ -40,12 +42,15 @@ export function useCADChat(engine: CadEngine | null) {
     return engineRef.current.compile(codeToTest, 'draft');
   }, []);
 
+  // Detect if the Google credential came from a Supabase OAuth sign-in
+  const isOAuthToken = aiProvider.type === 'google' && authUser?.provider === 'google' && !!providerToken;
+
   // Include engine truthiness so the transport is recreated once the engine
   // loads (otherwise compileFn is passed as null and test_code tool is missing).
   const engineReady = !!engine;
   const transport = useMemo(
-    () => createTransport(aiProvider, engineReady ? compileFn : null),
-    [aiProvider, compileFn, engineReady],
+    () => createTransport(aiProvider, engineReady ? compileFn : null, isOAuthToken),
+    [aiProvider, compileFn, engineReady, isOAuthToken],
   );
 
   const chat = useChat({
