@@ -74,30 +74,36 @@ export function useCADChat(engine: CadEngine | null) {
       ? `${text}\n\n---\n${context}`
       : text;
 
-    // Capture viewport screenshot from the Three.js canvas
-    let screenshotDataUrl: string | null = null;
+    // Capture viewport screenshot and attach as a File.
+    // The AI SDK's FileUIPart doesn't support data: URLs, so we convert
+    // the canvas data URL to a File via DataTransfer to get a real FileList.
+    let screenshotFiles: FileList | undefined;
     try {
       const canvas = document.querySelector('canvas');
       if (canvas) {
-        screenshotDataUrl = canvas.toDataURL('image/png');
+        const dataUrl = canvas.toDataURL('image/png');
+        const base64 = dataUrl.split(',')[1];
+        if (base64) {
+          const binary = atob(base64);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+          }
+          const file = new File([bytes], 'viewport.png', { type: 'image/png' });
+          const dt = new DataTransfer();
+          dt.items.add(file);
+          screenshotFiles = dt.files;
+          console.log('[Chat] Attaching viewport screenshot');
+        }
       }
     } catch {
       // Canvas capture can fail due to tainted canvas or security restrictions
     }
 
-    if (screenshotDataUrl) {
-      console.log('[Chat] Attaching viewport screenshot');
-      chat.sendMessage({
-        text: messageWithContext,
-        files: [{
-          type: 'file' as const,
-          mediaType: 'image/png',
-          url: screenshotDataUrl,
-        }],
-      });
-    } else {
-      chat.sendMessage({ text: messageWithContext });
-    }
+    chat.sendMessage({
+      text: messageWithContext,
+      ...(screenshotFiles && { files: screenshotFiles }),
+    });
   }, [transport, code, parts, selectedPartIds, cameraDescription, chat]);
 
   return {

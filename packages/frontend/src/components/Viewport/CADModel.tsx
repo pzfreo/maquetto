@@ -8,9 +8,46 @@ interface CADModelProps {
   data: ArrayBuffer;
 }
 
-interface ExtractedMesh {
-  mesh: THREE.Mesh;
+interface PartGroup {
+  group: THREE.Group;
   partId: string;
+}
+
+/**
+ * Find the N sub-trees in a glTF scene that correspond to parts.
+ *
+ * Build123d's export_gltf creates multiple meshes per shape (one per
+ * face), so we can't do a 1:1 mesh↔part mapping.  Instead we look at
+ * the scene hierarchy:
+ *
+ *  - Single shape  → scene may have 1 child group containing face meshes
+ *  - Compound(N)   → scene has a wrapper group whose N children are parts
+ *  - Direct match  → scene.children.length === partCount
+ */
+function findPartNodes(scene: THREE.Group, partCount: number): THREE.Object3D[] {
+  const children = scene.children;
+
+  // Direct children match part count
+  if (children.length === partCount) {
+    return [...children];
+  }
+
+  // Single wrapper group whose children match part count (Compound case)
+  if (children.length === 1 && children[0]!.children.length === partCount) {
+    return [...children[0]!.children];
+  }
+
+  // Single part — the entire scene is the one part
+  if (partCount === 1) {
+    return [scene];
+  }
+
+  // Fallback — take the first partCount children we can find
+  console.warn(
+    `[Viewport] Cannot map scene structure (${children.length} children) ` +
+    `to ${partCount} parts. Falling back to first ${partCount} children.`,
+  );
+  return children.slice(0, partCount);
 }
 
 export function CADModel({ data }: CADModelProps) {
@@ -55,67 +92,54 @@ export function CADModel({ data }: CADModelProps) {
     };
   }, [data]);
 
-  // Extract meshes from scene and pair with part metadata.
-  // Build123d's export_gltf names meshes "COMPOUND", "COMPOUND_1" etc.,
-  // so we match by traversal index order.
-  const extractedMeshes = useMemo<ExtractedMesh[]>(() => {
+  // Group scene nodes by part.
+  // Build123d's export_gltf creates multiple meshes per shape (one per
+  // face), so a single Box → 6 meshes.  We match at the *group* level
+  // in the scene hierarchy, not the individual mesh level.
+  const partGroups = useMemo<PartGroup[]>(() => {
     if (!scene || parts.length === 0) return [];
 
-    const allMeshes: THREE.Mesh[] = [];
-    scene.traverse((child) => {
-      if (child instanceof THREE.Mesh) {
-        allMeshes.push(child);
-      }
-    });
-
-    // When Build123d exports a Compound, the glTF may contain a fused
-    // assembly mesh *plus* individual child meshes, giving us more meshes
-    // than parts.  Take only the last parts.length meshes (the children).
-    let meshes: THREE.Mesh[];
-    if (allMeshes.length > parts.length) {
-      console.warn(
-        `[Viewport] Mesh count (${allMeshes.length}) > part count (${parts.length}). ` +
-        `Skipping first ${allMeshes.length - parts.length} meshes (assembly duplicates).`,
-      );
-      meshes = allMeshes.slice(allMeshes.length - parts.length);
-    } else if (allMeshes.length < parts.length) {
-      console.warn(
-        `[Viewport] Mesh count (${allMeshes.length}) < part count (${parts.length}). ` +
-        `Some parts may not render.`,
-      );
-      meshes = allMeshes;
-    } else {
-      meshes = allMeshes;
-    }
-
-    // Update the scene's world matrix so we can compute each mesh's
-    // absolute transform within the glTF (without the 1000x scale —
-    // that's applied at the <group> level in the JSX).
     scene.updateMatrixWorld(true);
 
-    return meshes.map((mesh, index) => {
+    const nodes = findPartNodes(scene, parts.length);
+
+    let totalMeshes = 0;
+    return nodes.map((node, index) => {
       const partMeta = parts[index];
       if (!partMeta) return null;
 
-      // Compute the mesh's world transform within the glTF scene,
-      // then detach and bake it as the mesh's local transform.
-      // This flattens the hierarchy so each mesh can be rendered
-      // independently while keeping its correct position.
-      const worldMatrix = mesh.matrixWorld.clone();
-      mesh.removeFromParent();
-      mesh.matrix.copy(worldMatrix);
-      mesh.matrix.decompose(mesh.position, mesh.quaternion, mesh.scale);
+      // Create a new group and move all meshes from this node into it,
+      // baking world transforms so each group renders independently.
+      const group = new THREE.Group();
+      group.userData.partId = partMeta.id;
 
-      mesh.userData.partId = partMeta.id;
-      mesh.material = new THREE.MeshStandardMaterial({
-        color: new THREE.Color(...partMeta.color),
-        metalness: 0.1,
-        roughness: 0.6,
-        side: THREE.DoubleSide,
+      const meshes: THREE.Mesh[] = [];
+      node.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          meshes.push(child);
+        }
       });
+      totalMeshes += meshes.length;
 
-      return { mesh, partId: partMeta.id };
-    }).filter((m): m is ExtractedMesh => m !== null);
+      for (const mesh of meshes) {
+        const worldMatrix = mesh.matrixWorld.clone();
+        mesh.removeFromParent();
+        mesh.matrix.copy(worldMatrix);
+        mesh.matrix.decompose(mesh.position, mesh.quaternion, mesh.scale);
+
+        mesh.userData.partId = partMeta.id;
+        mesh.material = new THREE.MeshStandardMaterial({
+          color: new THREE.Color(...partMeta.color),
+          metalness: 0.1,
+          roughness: 0.6,
+          side: THREE.DoubleSide,
+        });
+
+        group.add(mesh);
+      }
+
+      return { group, partId: partMeta.id };
+    }).filter((g): g is PartGroup => g !== null);
   }, [scene, parts]);
 
   // Click handler for part selection
@@ -168,24 +192,29 @@ export function CADModel({ data }: CADModelProps) {
 
   return (
     <group ref={groupRef} scale={1000}>
-      {extractedMeshes.map(({ mesh, partId }) => {
+      {partGroups.map(({ group, partId }) => {
         const isHidden = hiddenPartIds.includes(partId);
         const isSelected = selectedPartIds.includes(partId);
 
-        // Set visibility and selection directly on the Three.js object
-        // to avoid R3F primitive prop-update quirks.
-        mesh.visible = !isHidden;
-        const mat = mesh.material as THREE.MeshStandardMaterial;
-        if (isSelected) {
-          mat.emissive.setRGB(0.15, 0.15, 0.15);
-        } else {
-          mat.emissive.setRGB(0, 0, 0);
-        }
+        // Set visibility on the group (affects all child meshes).
+        group.visible = !isHidden;
+
+        // Set selection emissive on every mesh in the group.
+        group.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            const mat = child.material as THREE.MeshStandardMaterial;
+            if (isSelected) {
+              mat.emissive.setRGB(0.15, 0.15, 0.15);
+            } else {
+              mat.emissive.setRGB(0, 0, 0);
+            }
+          }
+        });
 
         return (
           <primitive
             key={partId}
-            object={mesh}
+            object={group}
           />
         );
       })}
