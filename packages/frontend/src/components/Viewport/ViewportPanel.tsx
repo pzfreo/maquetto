@@ -1,4 +1,5 @@
-import { Canvas } from '@react-three/fiber';
+import { useEffect, useCallback } from 'react';
+import { Canvas, useThree } from '@react-three/fiber';
 import { Environment, OrbitControls, Grid } from '@react-three/drei';
 import * as THREE from 'three';
 import { useAppStore } from '../../store';
@@ -8,6 +9,25 @@ import { PartLabels } from './PartLabels';
 import { PartsPanel } from './PartsPanel';
 import { ViewportHelper } from './ViewportHelper';
 import { LogoModel } from './LogoModel';
+
+/** Registers a screenshot capture function with the store so other layers can use it. */
+function ScreenshotRegistrar() {
+  const gl = useThree((s) => s.gl);
+  const capture = useCallback((): string | null => {
+    try {
+      return gl.domElement.toDataURL('image/png');
+    } catch {
+      return null;
+    }
+  }, [gl]);
+
+  useEffect(() => {
+    useAppStore.getState().setCaptureScreenshot(capture);
+    return () => useAppStore.getState().setCaptureScreenshot(null);
+  }, [capture]);
+
+  return null;
+}
 
 export function ViewportPanel() {
   const gltfData = useAppStore((s) => s.gltfData);
@@ -23,6 +43,7 @@ export function ViewportPanel() {
         }}
         camera={{ position: [80, 60, 80], fov: 50, near: 0.1, far: 2000 }}
       >
+        <ScreenshotRegistrar />
         <SceneLighting />
         <Environment preset="apartment" />
         <OrbitControls makeDefault enableDamping dampingFactor={0.05} />

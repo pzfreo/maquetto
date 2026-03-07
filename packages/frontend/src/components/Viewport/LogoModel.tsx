@@ -1,6 +1,8 @@
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
+import { Html } from '@react-three/drei';
 import * as THREE from 'three';
+import { useAppStore } from '../../store';
 
 /**
  * 3D version of the Maquetto logo — an isometric cube with "M" and ">_".
@@ -8,6 +10,7 @@ import * as THREE from 'three';
  */
 export function LogoModel() {
   const groupRef = useRef<THREE.Group>(null);
+  const engineStatus = useAppStore((s) => s.engineStatus);
 
   useFrame((_, delta) => {
     if (groupRef.current) {
@@ -81,15 +84,35 @@ export function LogoModel() {
     };
   }, []);
 
+  const loadingLabel = engineStatus.phase === 'ready' ? null : (
+    engineStatus.phase === 'error' ? 'Engine failed to load' :
+    `Loading${engineStatus.progress > 0 ? ` (${engineStatus.progress}%)` : '...'}`
+  );
+
   return (
-    <group ref={groupRef}>
-      {faces.map((f, i) => (
-        <mesh key={i} geometry={f.geo} material={f.mat} />
-      ))}
-      <lineSegments geometry={edgesGeo} material={edgeMat} />
-      <primitive object={mLine} />
-      <primitive object={chevronLine} />
-      <primitive object={cursorLine} />
-    </group>
+    <>
+      <group ref={groupRef}>
+        {faces.map((f, i) => (
+          <mesh key={i} geometry={f.geo} material={f.mat} />
+        ))}
+        <lineSegments geometry={edgesGeo} material={edgeMat} />
+        <primitive object={mLine} />
+        <primitive object={chevronLine} />
+        <primitive object={cursorLine} />
+      </group>
+      {loadingLabel && (
+        <Html center position={[0, -30, 0]} zIndexRange={[1, 0]}>
+          <div style={{
+            color: '#8888aa',
+            fontSize: '14px',
+            fontFamily: 'system-ui, sans-serif',
+            whiteSpace: 'nowrap',
+            userSelect: 'none',
+          }}>
+            {loadingLabel}
+          </div>
+        </Html>
+      )}
+    </>
   );
 }

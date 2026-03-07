@@ -5,6 +5,7 @@ export const createViewportSlice: StateCreator<AppStore, [], [], ViewportSlice> 
   selectedPartIds: [],
   hiddenPartIds: [],
   cameraDescription: 'default view',
+  captureScreenshot: null,
 
   setSelectedPartIds: (selectedPartIds) => set({ selectedPartIds }),
 
@@ -27,4 +28,6 @@ export const createViewportSlice: StateCreator<AppStore, [], [], ViewportSlice> 
   showAllParts: () => set({ hiddenPartIds: [] }),
 
   setCameraDescription: (cameraDescription) => set({ cameraDescription }),
+
+  setCaptureScreenshot: (captureScreenshot) => set({ captureScreenshot }),
 });
