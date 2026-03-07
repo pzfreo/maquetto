@@ -1,22 +1,28 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { useThree, useFrame } from '@react-three/fiber';
+import { useThree } from '@react-three/fiber';
 import { useAppStore } from '../../store';
 
 interface CADModelProps {
   data: ArrayBuffer;
 }
 
+interface ExtractedMesh {
+  mesh: THREE.Mesh;
+  partId: string;
+}
+
 export function CADModel({ data }: CADModelProps) {
   const parts = useAppStore((s) => s.parts);
+  const selectedPartIds = useAppStore((s) => s.selectedPartIds);
+  const hiddenPartIds = useAppStore((s) => s.hiddenPartIds);
   const togglePartSelection = useAppStore((s) => s.togglePartSelection);
   const setSelectedPartIds = useAppStore((s) => s.setSelectedPartIds);
 
   const [scene, setScene] = useState<THREE.Group | null>(null);
   const groupRef = useRef<THREE.Group>(null);
-  const meshMapRef = useRef<Map<string, THREE.Mesh>>(new Map());
-  const { camera, raycaster, pointer, invalidate } = useThree();
+  const { camera, raycaster, pointer } = useThree();
 
   // Load glTF from ArrayBuffer
   useEffect(() => {
@@ -25,20 +31,18 @@ export function CADModel({ data }: CADModelProps) {
       data,
       '',
       (gltf) => {
-        // Build123d's export_gltf converts mm to meters (per glTF spec).
-        // Scale back to mm so geometry matches our camera/grid/labels.
-        gltf.scene.scale.setScalar(1000);
-
         let meshCount = 0;
         gltf.scene.traverse((child) => {
           if (child instanceof THREE.Mesh) {
             meshCount++;
           }
         });
+        // Build123d's export_gltf converts mm to meters (per glTF spec).
+        // We apply a 1000x scale at the group level when rendering.
         const box = new THREE.Box3().setFromObject(gltf.scene);
         const size = new THREE.Vector3();
         box.getSize(size);
-        console.log(`[Viewport] glTF loaded: ${meshCount} meshes, size=(${size.x.toFixed(1)}, ${size.y.toFixed(1)}, ${size.z.toFixed(1)})`);
+        console.log(`[Viewport] glTF loaded: ${meshCount} meshes, size=(${(size.x * 1000).toFixed(1)}, ${(size.y * 1000).toFixed(1)}, ${(size.z * 1000).toFixed(1)})mm`);
         setScene(gltf.scene);
       },
       (error) => {
@@ -48,76 +52,75 @@ export function CADModel({ data }: CADModelProps) {
 
     return () => {
       setScene(null);
-      meshMapRef.current.clear();
     };
   }, [data]);
 
-  // Map meshes to parts by traversal order and apply materials.
+  // Extract meshes from scene and pair with part metadata.
   // Build123d's export_gltf names meshes "COMPOUND", "COMPOUND_1" etc.,
-  // so we match by index order instead.
-  useEffect(() => {
-    if (!scene) return;
+  // so we match by traversal index order.
+  const extractedMeshes = useMemo<ExtractedMesh[]>(() => {
+    if (!scene || parts.length === 0) return [];
 
-    const meshes: THREE.Mesh[] = [];
+    const allMeshes: THREE.Mesh[] = [];
     scene.traverse((child) => {
       if (child instanceof THREE.Mesh) {
-        meshes.push(child);
+        allMeshes.push(child);
       }
     });
 
-    if (meshes.length !== parts.length && parts.length > 0) {
+    // When Build123d exports a Compound, the glTF may contain a fused
+    // assembly mesh *plus* individual child meshes, giving us more meshes
+    // than parts.  Take only the last parts.length meshes (the children).
+    let meshes: THREE.Mesh[];
+    if (allMeshes.length > parts.length) {
       console.warn(
-        `[Viewport] Mesh count (${meshes.length}) != part count (${parts.length}). ` +
-        `Color/selection mapping may be incorrect.`,
+        `[Viewport] Mesh count (${allMeshes.length}) > part count (${parts.length}). ` +
+        `Skipping first ${allMeshes.length - parts.length} meshes (assembly duplicates).`,
       );
+      meshes = allMeshes.slice(allMeshes.length - parts.length);
+    } else if (allMeshes.length < parts.length) {
+      console.warn(
+        `[Viewport] Mesh count (${allMeshes.length}) < part count (${parts.length}). ` +
+        `Some parts may not render.`,
+      );
+      meshes = allMeshes;
+    } else {
+      meshes = allMeshes;
     }
 
-    const newMap = new Map<string, THREE.Mesh>();
+    // Update the scene's world matrix so we can compute each mesh's
+    // absolute transform within the glTF (without the 1000x scale —
+    // that's applied at the <group> level in the JSX).
+    scene.updateMatrixWorld(true);
 
-    meshes.forEach((mesh, index) => {
+    return meshes.map((mesh, index) => {
       const partMeta = parts[index];
-      if (!partMeta) return;
+      if (!partMeta) return null;
 
-      // Store part ID on mesh for click detection
+      // Compute the mesh's world transform within the glTF scene,
+      // then detach and bake it as the mesh's local transform.
+      // This flattens the hierarchy so each mesh can be rendered
+      // independently while keeping its correct position.
+      const worldMatrix = mesh.matrixWorld.clone();
+      mesh.removeFromParent();
+      mesh.matrix.copy(worldMatrix);
+      mesh.matrix.decompose(mesh.position, mesh.quaternion, mesh.scale);
+
       mesh.userData.partId = partMeta.id;
-      newMap.set(partMeta.id, mesh);
-
-      // Apply material with part color
       mesh.material = new THREE.MeshStandardMaterial({
         color: new THREE.Color(...partMeta.color),
         metalness: 0.1,
         roughness: 0.6,
         side: THREE.DoubleSide,
       });
-    });
 
-    meshMapRef.current = newMap;
-    invalidate();
-  }, [scene, parts, invalidate]);
-
-  // Apply visibility and selection every frame.
-  // Read directly from Zustand store to avoid stale closure issues in R3F's render loop.
-  useFrame(() => {
-    const map = meshMapRef.current;
-    if (map.size === 0) return;
-
-    const { hiddenPartIds, selectedPartIds } = useAppStore.getState();
-
-    for (const [partId, mesh] of map) {
-      mesh.visible = !hiddenPartIds.includes(partId);
-
-      const mat = mesh.material as THREE.MeshStandardMaterial;
-      if (selectedPartIds.includes(partId)) {
-        mat.emissive.setRGB(0.15, 0.15, 0.15);
-      } else {
-        mat.emissive.setRGB(0, 0, 0);
-      }
-    }
-  });
+      return { mesh, partId: partMeta.id };
+    }).filter((m): m is ExtractedMesh => m !== null);
+  }, [scene, parts]);
 
   // Click handler for part selection
   useEffect(() => {
-    if (!scene || !groupRef.current) return;
+    if (!groupRef.current) return;
 
     const handleClick = (event: MouseEvent) => {
       const canvas = event.target as HTMLCanvasElement;
@@ -155,7 +158,6 @@ export function CADModel({ data }: CADModelProps) {
     window.addEventListener('click', handleClick);
     return () => window.removeEventListener('click', handleClick);
   }, [
-    scene,
     camera,
     raycaster,
     pointer,
@@ -164,11 +166,29 @@ export function CADModel({ data }: CADModelProps) {
     setSelectedPartIds,
   ]);
 
-  if (!scene) return null;
-
   return (
-    <group ref={groupRef}>
-      <primitive object={scene} />
+    <group ref={groupRef} scale={1000}>
+      {extractedMeshes.map(({ mesh, partId }) => {
+        const isHidden = hiddenPartIds.includes(partId);
+        const isSelected = selectedPartIds.includes(partId);
+
+        // Set visibility and selection directly on the Three.js object
+        // to avoid R3F primitive prop-update quirks.
+        mesh.visible = !isHidden;
+        const mat = mesh.material as THREE.MeshStandardMaterial;
+        if (isSelected) {
+          mat.emissive.setRGB(0.15, 0.15, 0.15);
+        } else {
+          mat.emissive.setRGB(0, 0, 0);
+        }
+
+        return (
+          <primitive
+            key={partId}
+            object={mesh}
+          />
+        );
+      })}
     </group>
   );
 }
