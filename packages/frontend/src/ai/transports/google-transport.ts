@@ -18,27 +18,26 @@ export function createGoogleTransport(
   useOAuth?: boolean,
 ) {
   const resolvedModel = modelId || 'gemini-3-flash-preview';
-  console.log(`[Google] Initializing Gemini transport (model: ${resolvedModel}, oauth: ${!!useOAuth})`);
+  console.log(`[Google] Initializing Gemini transport (model: ${resolvedModel}, oauth: ${!!useOAuth}, credential: ${credential.substring(0, 10)}...)`);
 
-  // For BYOK: pass API key directly (SDK sends it as ?key= or x-goog-api-key header).
+  // For BYOK: pass API key directly.
   // For OAuth: use custom fetch to replace API key auth with Bearer token.
-  // The SDK requires apiKey, so we provide a placeholder for OAuth and swap in
-  // the Authorization header via custom fetch.
   const google = useOAuth
     ? createGoogleGenerativeAI({
         apiKey: 'oauth-placeholder',
         fetch: async (input, init) => {
           const url = new URL(typeof input === 'string' ? input : (input as Request).url);
-          // Strip the placeholder API key from URL
           url.searchParams.delete('key');
           const headers = new Headers(init?.headers);
-          // Remove any API key header the SDK added
           headers.delete('x-goog-api-key');
-          // Set OAuth Bearer token
           headers.set('Authorization', `Bearer ${credential}`);
           console.log(`[Google OAuth] ${init?.method ?? 'GET'} ${url.pathname}`);
           const response = await globalThis.fetch(url.toString(), { ...init, headers });
-          console.log(`[Google OAuth] Response: ${response.status} ${response.statusText}`);
+          console.log(`[Google OAuth] Response: ${response.status} ${response.statusText}, content-type: ${response.headers.get('content-type')}`);
+          if (!response.ok) {
+            const body = await response.clone().text();
+            console.error(`[Google OAuth] Error body:`, body);
+          }
           return response;
         },
       })
