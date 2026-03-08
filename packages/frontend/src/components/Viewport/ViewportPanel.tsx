@@ -31,6 +31,13 @@ function ScreenshotRegistrar() {
 
 export function ViewportPanel() {
   const gltfData = useAppStore((s) => s.gltfData);
+  const enginePhase = useAppStore((s) => s.engineStatus.phase);
+  const engineProgress = useAppStore((s) => s.engineStatus.progress);
+
+  const showLogo = !gltfData;
+  const loadingLabel = enginePhase === 'ready' ? null
+    : enginePhase === 'error' ? 'Engine failed to load'
+    : `Loading${engineProgress > 0 ? ` (${engineProgress}%)` : '...'}`;
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -60,6 +67,22 @@ export function ViewportPanel() {
         <PartLabels />
         <ViewportHelper />
       </Canvas>
+      {showLogo && loadingLabel && (
+        <div style={{
+          position: 'absolute',
+          bottom: '40%',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          color: '#8888aa',
+          fontSize: '14px',
+          fontFamily: 'system-ui, sans-serif',
+          whiteSpace: 'nowrap',
+          userSelect: 'none',
+          pointerEvents: 'none',
+        }}>
+          {loadingLabel}
+        </div>
+      )}
       <PartsPanel />
     </div>
   );
