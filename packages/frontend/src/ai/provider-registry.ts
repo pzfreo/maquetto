@@ -22,6 +22,7 @@ export function createTransport(
   console.log(`[Provider] Creating transport for: ${config.type}${customSystemPrompt ? ' (custom prompt)' : ''}`);
   switch (config.type) {
     case 'google':
+    case 'google-oauth':
       return createGoogleTransport(config.credential, systemPrompt, compileFn, config.modelId);
     case 'anthropic':
       return createAnthropicTransport(config.credential, systemPrompt, compileFn, config.modelId);
