@@ -266,6 +266,7 @@ export function ChatPanel({ onCompile, engine }: ChatPanelProps) {
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
+        minHeight: 0,
       }}
     >
       {/* Header */}
@@ -291,6 +292,7 @@ export function ChatPanel({ onCompile, engine }: ChatPanelProps) {
       <div
         style={{
           flex: 1,
+          minHeight: 0,
           overflowY: 'auto',
           padding: '10px',
           display: 'flex',

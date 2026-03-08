@@ -56,6 +56,7 @@ export function ChatInput({ onSend, disabled, isStreaming, onStop }: ChatInputPr
         borderTop: '1px solid #2a2a3e',
         background: '#16162a',
         alignItems: 'flex-end',
+        flexShrink: 0,
       }}
     >
       <textarea
