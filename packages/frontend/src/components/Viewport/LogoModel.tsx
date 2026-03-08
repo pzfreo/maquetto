@@ -2,6 +2,10 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
+// Module-level timestamp so rotation is based on absolute wall clock time,
+// completely independent of R3F's clock (which resets if Canvas remounts).
+const MODULE_START = performance.now();
+
 /**
  * 3D spinning cube logo shown in the viewport while the CAD engine loads.
  * Pure Three.js — no store subscriptions, no drei Html, no React re-renders.
@@ -9,11 +13,10 @@ import * as THREE from 'three';
 export function LogoModel() {
   const groupRef = useRef<THREE.Group>(null);
 
-  // Use absolute clock time so rotation is always smooth and deterministic,
-  // even if the component re-renders or frames are dropped.
-  useFrame(({ clock }) => {
+  useFrame(() => {
     if (groupRef.current) {
-      groupRef.current.rotation.y = clock.getElapsedTime() * 0.3;
+      const elapsed = (performance.now() - MODULE_START) / 1000;
+      groupRef.current.rotation.y = elapsed * 0.3;
     }
   });
 
