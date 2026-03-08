@@ -33,6 +33,8 @@ export function Toolbar({ onCompile, onStop, onRetryEngine, engine, onOpenProjec
   const [exporting, setExporting] = useState<ExportFormat | null>(null);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
+  // Pending action to execute after user provides a title (when it was "Untitled")
+  const pendingActionRef = useRef<(() => void) | null>(null);
   const fileMenuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -73,46 +75,63 @@ export function Toolbar({ onCompile, onStop, onRetryEngine, engine, onOpenProjec
     }
   }, [editingTitle]);
 
+  /**
+   * If the project is still "Untitled", prompt the user to name it first,
+   * then execute the action. Otherwise execute immediately.
+   */
+  const requireTitle = useCallback((action: () => void) => {
+    if (projectTitle === 'Untitled') {
+      pendingActionRef.current = action;
+      setTitleDraft('');
+      setEditingTitle(true);
+      return;
+    }
+    action();
+  }, [projectTitle]);
+
   const handleNew = () => {
     setFileMenuOpen(false);
     newProject();
   };
 
-  const handleSave = useCallback(async () => {
+  const handleSave = useCallback(() => {
     setFileMenuOpen(false);
-    await save();
-  }, [save]);
+    requireTitle(() => void save());
+  }, [save, requireTitle]);
 
-  const handleExport = useCallback(async (format: ExportFormat) => {
+  const handleExport = useCallback((format: ExportFormat) => {
     setFileMenuOpen(false);
     if (!engine || !isReady) return;
-    setExporting(format);
-    try {
-      const result = await engine.exportModel(code, format);
-      if (result.error) {
-        console.error(`[Toolbar] Export error: ${result.error}`);
-        alert(`Export failed: ${result.error}`);
-        return;
+    requireTitle(async () => {
+      setExporting(format);
+      try {
+        const result = await engine.exportModel(code, format);
+        if (result.error) {
+          console.error(`[Toolbar] Export error: ${result.error}`);
+          alert(`Export failed: ${result.error}`);
+          return;
+        }
+        const mimeType = format === 'stl'
+          ? 'application/vnd.ms-stt'
+          : 'application/step';
+        downloadBlob(result.data, result.filename, mimeType);
+      } catch (err) {
+        console.error('[Toolbar] Export failed:', err);
+        alert(`Export failed: ${err}`);
+      } finally {
+        setExporting(null);
       }
-      const mimeType = format === 'stl'
-        ? 'application/vnd.ms-stt'
-        : 'application/step';
-      downloadBlob(result.data, result.filename, mimeType);
-    } catch (err) {
-      console.error('[Toolbar] Export failed:', err);
-      alert(`Export failed: ${err}`);
-    } finally {
-      setExporting(null);
-    }
-  }, [engine, isReady, code]);
+    });
+  }, [engine, isReady, code, requireTitle]);
 
   const handleExportPython = useCallback(() => {
     setFileMenuOpen(false);
-    const filename = currentProject?.title
-      ? `${currentProject.title.toLowerCase().replace(/\s+/g, '_')}.py`
-      : 'model.py';
-    downloadText(code, filename, 'text/x-python');
-  }, [code, currentProject]);
+    requireTitle(() => {
+      const title = useAppStore.getState().currentProject?.title ?? 'model';
+      const filename = `${title.toLowerCase().replace(/\s+/g, '_')}.py`;
+      downloadText(code, filename, 'text/x-python');
+    });
+  }, [code, requireTitle]);
 
   const handleImportPython = useCallback(() => {
     setFileMenuOpen(false);
@@ -140,6 +159,13 @@ export function Toolbar({ onCompile, onStop, onRetryEngine, engine, onOpenProjec
     const trimmed = titleDraft.trim();
     if (trimmed && trimmed !== projectTitle) {
       updateProjectTitle(trimmed);
+    }
+    // Execute pending action (save/export) if title was provided
+    const pending = pendingActionRef.current;
+    pendingActionRef.current = null;
+    if (pending && trimmed) {
+      // Defer so the store update from updateProjectTitle settles first
+      setTimeout(pending, 0);
     }
   }, [titleDraft, projectTitle, updateProjectTitle]);
 
@@ -245,7 +271,7 @@ export function Toolbar({ onCompile, onStop, onRetryEngine, engine, onOpenProjec
           onBlur={handleTitleSubmit}
           onKeyDown={(e) => {
             if (e.key === 'Enter') handleTitleSubmit();
-            if (e.key === 'Escape') setEditingTitle(false);
+            if (e.key === 'Escape') { setEditingTitle(false); pendingActionRef.current = null; }
           }}
           style={{
             background: '#2a2a4e',
