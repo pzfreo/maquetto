@@ -1,24 +1,11 @@
-import { useRef, useMemo } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useMemo } from 'react';
 import * as THREE from 'three';
 
-// Module-level timestamp so rotation is based on absolute wall clock time,
-// completely independent of R3F's clock (which resets if Canvas remounts).
-const MODULE_START = performance.now();
-
 /**
- * 3D spinning cube logo shown in the viewport while the CAD engine loads.
- * Pure Three.js — no store subscriptions, no drei Html, no React re-renders.
+ * 3D cube logo shown in the viewport while the CAD engine loads.
+ * Static — no animation to avoid glitching from React/R3F reconciliation.
  */
 export function LogoModel() {
-  const groupRef = useRef<THREE.Group>(null);
-
-  useFrame(() => {
-    if (groupRef.current) {
-      const elapsed = (performance.now() - MODULE_START) / 1000;
-      groupRef.current.rotation.y = elapsed * 0.3;
-    }
-  });
 
   const { faces, edgesGeo, edgeMat, mLine, chevronLine, cursorLine } = useMemo(() => {
     const blue = '#4a9eff';
@@ -87,7 +74,7 @@ export function LogoModel() {
   }, []);
 
   return (
-    <group ref={groupRef}>
+    <group rotation={[0, Math.PI / 6, 0]}>
       {faces.map((f, i) => (
         <mesh key={i} geometry={f.geo} material={f.mat} />
       ))}
