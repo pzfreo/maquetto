@@ -112,11 +112,18 @@ export class DataUrlSafeChatTransport {
       }
     }
 
-    const result = await this.agent.stream({
-      prompt: modelMessages,
-      abortSignal,
-    });
-    return result.toUIMessageStream();
+    console.log(`[Transport] Streaming to agent with ${modelMessages.length} messages`);
+    try {
+      const result = await this.agent.stream({
+        prompt: modelMessages,
+        abortSignal,
+      });
+      console.log('[Transport] Agent stream started, converting to UI stream');
+      return result.toUIMessageStream();
+    } catch (err) {
+      console.error('[Transport] Agent stream failed:', err);
+      throw err;
+    }
   }
 
   async reconnectToStream() {

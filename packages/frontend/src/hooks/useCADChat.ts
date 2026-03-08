@@ -55,6 +55,9 @@ export function useCADChat(engine: CadEngine | null) {
     // generic constraints. Cast required until Vercel exports a simpler type.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     transport: (transport ?? noopTransport) as any,
+    onError(error) {
+      console.error('[Chat] useChat error:', error);
+    },
   });
 
   const sendWithContext = useCallback((text: string, options?: { includeScreenshot?: boolean }) => {
