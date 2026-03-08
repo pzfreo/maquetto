@@ -120,6 +120,8 @@ export function ChatPanel({ onCompile, engine }: ChatPanelProps) {
   } = useCADChat(engine);
 
   const isStreaming = status === 'streaming' || status === 'submitted';
+  const engineStatus = useAppStore((s) => s.engineStatus);
+  const engineReady = engineStatus.phase === 'ready';
   const pendingChatMessage = useAppStore((s) => s.pendingChatMessage);
 
   // Register clearChat so other components (e.g. Toolbar "New") can reset the chat
@@ -396,9 +398,10 @@ export function ChatPanel({ onCompile, engine }: ChatPanelProps) {
       {/* Input */}
       <ChatInput
         onSend={handleSend}
-        disabled={isStreaming || !isConfigured}
+        disabled={isStreaming || !isConfigured || !engineReady}
         isStreaming={isStreaming}
         onStop={handleStop}
+        placeholder={!isConfigured ? 'Set up AI provider in settings…' : !engineReady ? 'Waiting for CAD engine to load…' : undefined}
       />
     </div>
   );
