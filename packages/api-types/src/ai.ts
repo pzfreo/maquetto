@@ -8,9 +8,12 @@ export interface AIModelOption {
 }
 
 const GEMINI_MODELS: readonly AIModelOption[] = [
-  { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+  { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro' },
+  { id: 'gemini-3-flash-preview', label: 'Gemini 3 Flash' },
+  { id: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite' },
   { id: 'gemini-2.5-pro-preview-06-05', label: 'Gemini 2.5 Pro' },
   { id: 'gemini-2.5-flash-preview-05-20', label: 'Gemini 2.5 Flash' },
+  { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
 ] as const;
 
 /** Available models per provider */
@@ -27,8 +30,8 @@ export const AI_MODELS: Record<Exclude<AIProviderType, 'none'>, readonly AIModel
 /** Default model ID per provider */
 export const DEFAULT_MODEL: Record<Exclude<AIProviderType, 'none'>, string> = {
   anthropic: 'claude-sonnet-4-20250514',
-  google: 'gemini-2.0-flash',
-  'google-oauth': 'gemini-2.0-flash',
+  google: 'gemini-3-flash-preview',
+  'google-oauth': 'gemini-3-flash-preview',
 } as const;
 
 export interface AIProviderConfig {
