@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, memo } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { Environment, OrbitControls, Grid } from '@react-three/drei';
 import * as THREE from 'three';
@@ -63,7 +63,7 @@ function LoadingOverlay() {
   );
 }
 
-export function ViewportPanel() {
+export const ViewportPanel = memo(function ViewportPanel() {
   const gltfData = useAppStore((s) => s.gltfData);
 
   return (
@@ -98,4 +98,4 @@ export function ViewportPanel() {
       <PartsPanel />
     </div>
   );
-}
+});
