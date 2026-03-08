@@ -1,5 +1,5 @@
 import type { StateCreator } from 'zustand';
-import type { SettingsSlice, AppStore, AIProviderConfig, QualityLevel } from '@maquetto/api-types';
+import type { SettingsSlice, AppStore, AIProviderConfig, CredentialStatus, QualityLevel } from '@maquetto/api-types';
 
 const STORAGE_KEYS = {
   aiProvider: 'maquetto:ai-provider',
@@ -36,11 +36,14 @@ export const createSettingsSlice: StateCreator<AppStore, [], [], SettingsSlice> 
   aiProvider: loadAIProvider(),
   qualityLevel: loadQualityLevel(),
   customSystemPrompt: loadCustomSystemPrompt(),
+  credentialStatus: 'unchecked' as CredentialStatus,
+  credentialError: null,
 
   setAIProvider: (aiProvider) => {
     console.log(`[Settings] Saving AI provider: ${aiProvider.type}`);
     localStorage.setItem(STORAGE_KEYS.aiProvider, JSON.stringify(aiProvider));
-    set({ aiProvider });
+    // Reset credential status when provider changes
+    set({ aiProvider, credentialStatus: 'unchecked' as CredentialStatus, credentialError: null });
   },
 
   setQualityLevel: (qualityLevel) => {
@@ -56,5 +59,9 @@ export const createSettingsSlice: StateCreator<AppStore, [], [], SettingsSlice> 
       localStorage.removeItem(STORAGE_KEYS.customSystemPrompt);
     }
     set({ customSystemPrompt });
+  },
+
+  setCredentialStatus: (credentialStatus, credentialError = null) => {
+    set({ credentialStatus, credentialError });
   },
 });

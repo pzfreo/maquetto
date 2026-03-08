@@ -34,6 +34,7 @@ export type {
   CodeVersion,
   CompilationSlice,
   CompilationStatus,
+  CredentialStatus,
   EditorSlice,
   EngineSlice,
   Project,

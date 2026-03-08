@@ -90,14 +90,21 @@ export interface ViewportSlice {
 
 // --- Settings Slice ---
 
+export type CredentialStatus = 'unchecked' | 'checking' | 'valid' | 'invalid';
+
 export interface SettingsSlice {
   readonly aiProvider: AIProviderConfig;
   readonly qualityLevel: QualityLevel;
   /** User override for the AI system prompt. null = use default. */
   readonly customSystemPrompt: string | null;
+  /** Result of the last credential validation check */
+  readonly credentialStatus: CredentialStatus;
+  /** Error message from the last failed credential check */
+  readonly credentialError: string | null;
   setAIProvider: (config: AIProviderConfig) => void;
   setQualityLevel: (level: QualityLevel) => void;
   setCustomSystemPrompt: (prompt: string | null) => void;
+  setCredentialStatus: (status: CredentialStatus, error?: string | null) => void;
 }
 
 // --- Version History Slice ---

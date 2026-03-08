@@ -19,6 +19,8 @@ export function ProviderSettingsModal({
 }: ProviderSettingsModalProps) {
   const aiProvider = useAppStore((s) => s.aiProvider);
   const setAIProvider = useAppStore((s) => s.setAIProvider);
+  const credentialStatus = useAppStore((s) => s.credentialStatus);
+  const credentialError = useAppStore((s) => s.credentialError);
   const authUser = useAppStore((s) => s.authUser);
   const signOut = useAppStore((s) => s.signOut);
   const customSystemPrompt = useAppStore((s) => s.customSystemPrompt);
@@ -36,6 +38,20 @@ export function ProviderSettingsModal({
       setShowPromptEditor(!!customSystemPrompt);
     }
   }, [isOpen, customSystemPrompt]);
+
+  const statusLabel = (provider: ProviderOption) => {
+    if (activeProvider !== provider) return null;
+    switch (credentialStatus) {
+      case 'checking':
+        return <span style={{ fontSize: '10px', color: '#888', fontWeight: 400 }}>Checking...</span>;
+      case 'valid':
+        return <span style={{ fontSize: '10px', color: '#4caf50', fontWeight: 400 }}>Connected</span>;
+      case 'invalid':
+        return <span style={{ fontSize: '10px', color: '#f44336', fontWeight: 400 }} title={credentialError ?? undefined}>Invalid credential</span>;
+      default:
+        return <span style={{ fontSize: '10px', color: '#4caf50', fontWeight: 400 }}>Connected</span>;
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -301,9 +317,7 @@ export function ProviderSettingsModal({
                 <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.166 6.656 3.58 9 3.58Z" fill="#ea4335"/>
               </svg>
               Google Gemini (Sign in)
-              {activeProvider === 'google-oauth' && (
-                <span style={{ fontSize: '10px', color: '#4caf50', fontWeight: 400 }}>Connected</span>
-              )}
+              {statusLabel('google-oauth')}
             </div>
             {activeProvider === 'google-oauth' ? (
               <p style={{ fontSize: '11px', color: '#888', margin: 0 }}>
@@ -346,9 +360,7 @@ export function ProviderSettingsModal({
                 <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.166 6.656 3.58 9 3.58Z" fill="#ea4335"/>
               </svg>
               Google Gemini (API Key)
-              {activeProvider === 'google' && (
-                <span style={{ fontSize: '10px', color: '#4caf50', fontWeight: 400 }}>Connected</span>
-              )}
+              {statusLabel('google')}
             </div>
             {activeProvider !== 'google' && (
               <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
@@ -388,9 +400,7 @@ export function ProviderSettingsModal({
                 <text x="7" y="11" textAnchor="middle" fill="#fff" fontSize="10" fontWeight="bold">A</text>
               </svg>
               Anthropic Claude (API Key)
-              {activeProvider === 'anthropic' && (
-                <span style={{ fontSize: '10px', color: '#4caf50', fontWeight: 400 }}>Connected</span>
-              )}
+              {statusLabel('anthropic')}
             </div>
             {activeProvider !== 'anthropic' && (
               <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
@@ -422,6 +432,11 @@ export function ProviderSettingsModal({
             )}
           </div>
 
+          {credentialStatus === 'invalid' && credentialError && (
+            <p style={{ fontSize: '11px', color: '#f44336', margin: '4px 0 0 0' }}>
+              {credentialError}. Please check your credential and try again.
+            </p>
+          )}
           <p style={{ fontSize: '11px', color: '#666', margin: '4px 0 0 0' }}>
             API keys are stored locally in your browser and never sent to our servers.
           </p>
