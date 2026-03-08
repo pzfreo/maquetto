@@ -82,7 +82,7 @@ export function Layout({ onCompile, onStop, onRetryEngine, engine }: LayoutProps
           <div className="mobile-pane mobile-pane-viewport">
             <ViewportPanel />
           </div>
-          <div className="mobile-pane">
+          <div className="mobile-pane mobile-pane-chat">
             <ChatPanel onCompile={onCompile} engine={engine ?? null} />
           </div>
         </div>

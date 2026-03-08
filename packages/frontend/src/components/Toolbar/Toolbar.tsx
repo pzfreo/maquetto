@@ -8,6 +8,7 @@ import { signInWithGoogle } from '../../lib/auth-actions';
 import { useProjects } from '../../hooks/useProjects';
 import { downloadBlob, downloadText } from '../../lib/download';
 import { supabaseConfigured } from '../../lib/supabase';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 interface ToolbarProps {
   onCompile?: () => void;
@@ -35,6 +36,7 @@ export function Toolbar({ onCompile, onStop, onRetryEngine, engine, onOpenProjec
   const fileMenuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const isMobile = useIsMobile();
 
   const { save, newProject, canSave } = useProjects();
 
@@ -124,14 +126,12 @@ export function Toolbar({ onCompile, onStop, onRetryEngine, engine, onOpenProjec
     reader.onload = () => {
       const text = reader.result as string;
       useAppStore.getState().setCode(text);
-      // Use filename (minus extension) as project title if no project loaded
       if (!currentProject) {
         const name = file.name.replace(/\.py$/i, '').replace(/_/g, ' ');
         useAppStore.getState().updateProjectTitle(name);
       }
     };
     reader.readAsText(file);
-    // Reset input so same file can be re-imported
     e.target.value = '';
   }, [currentProject]);
 
@@ -196,15 +196,25 @@ export function Toolbar({ onCompile, onStop, onRetryEngine, engine, onOpenProjec
     e.currentTarget.style.background = 'transparent';
   };
 
+  const menuLabelStyle = {
+    display: 'block' as const,
+    width: '100%',
+    padding: '6px 16px',
+    color: '#666',
+    fontSize: '11px',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.5px',
+  };
+
   return (
     <div
       className="toolbar"
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '12px',
-        padding: '0 16px',
-        height: '44px',
+        gap: isMobile ? '6px' : '12px',
+        padding: isMobile ? '0 8px' : '0 16px',
+        height: isMobile ? '40px' : '44px',
         background: '#16162a',
         borderBottom: '1px solid #2a2a3e',
         flexShrink: 0,
@@ -216,13 +226,14 @@ export function Toolbar({ onCompile, onStop, onRetryEngine, engine, onOpenProjec
           alignItems: 'center',
           gap: '6px',
           fontWeight: 600,
-          fontSize: '15px',
+          fontSize: isMobile ? '14px' : '15px',
           color: '#e0e0e0',
-          marginRight: '4px',
+          marginRight: isMobile ? '0' : '4px',
+          flexShrink: 0,
         }}
       >
         <img src="/logo.svg" alt="" width={22} height={22} />
-        Maquetto
+        {!isMobile && 'Maquetto'}
       </span>
 
       {/* Editable project title */}
@@ -244,7 +255,8 @@ export function Toolbar({ onCompile, onStop, onRetryEngine, engine, onOpenProjec
             fontSize: '13px',
             padding: '2px 8px',
             outline: 'none',
-            maxWidth: '200px',
+            maxWidth: isMobile ? '100px' : '200px',
+            minWidth: 0,
           }}
         />
       ) : (
@@ -262,10 +274,11 @@ export function Toolbar({ onCompile, onStop, onRetryEngine, engine, onOpenProjec
             cursor: 'pointer',
             padding: '2px 6px',
             borderRadius: '4px',
-            maxWidth: '200px',
+            maxWidth: isMobile ? '100px' : '200px',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
+            minWidth: 0,
           }}
         >
           {projectTitle}
@@ -273,7 +286,7 @@ export function Toolbar({ onCompile, onStop, onRetryEngine, engine, onOpenProjec
         </button>
       )}
 
-      {/* File menu */}
+      {/* Hamburger menu */}
       <div ref={fileMenuRef} style={{ position: 'relative' }}>
         <button
           onClick={() => setFileMenuOpen(!fileMenuOpen)}
@@ -303,7 +316,6 @@ export function Toolbar({ onCompile, onStop, onRetryEngine, engine, onOpenProjec
               New
             </button>
 
-            {/* Cloud save/load — only shown when Supabase is configured */}
             {supabaseConfigured && (
               <>
                 <button
@@ -356,6 +368,54 @@ export function Toolbar({ onCompile, onStop, onRetryEngine, engine, onOpenProjec
             >
               {exporting === 'step' ? 'Exporting STEP...' : 'Export STEP'}
             </button>
+
+            {/* On mobile: settings, AI, account all go in the menu */}
+            {isMobile && (
+              <>
+                <div style={menuSep} />
+                <span style={menuLabelStyle}>Account & Settings</span>
+
+                {providerLabel && (
+                  <button
+                    onClick={() => { setFileMenuOpen(false); setSettingsOpen(true); }}
+                    style={menuItemStyle}
+                    onMouseEnter={hoverIn}
+                    onMouseLeave={hoverOut}
+                  >
+                    AI: {providerLabel}
+                  </button>
+                )}
+
+                <button
+                  onClick={() => { setFileMenuOpen(false); setSettingsOpen(true); }}
+                  style={menuItemStyle}
+                  onMouseEnter={hoverIn}
+                  onMouseLeave={hoverOut}
+                >
+                  Settings...
+                </button>
+
+                {authUser ? (
+                  <button
+                    onClick={() => { setFileMenuOpen(false); setSettingsOpen(true); }}
+                    style={menuItemStyle}
+                    onMouseEnter={hoverIn}
+                    onMouseLeave={hoverOut}
+                  >
+                    {authUser.email ?? authUser.name}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => { setFileMenuOpen(false); void handleGoogleSignIn(); }}
+                    style={menuItemStyle}
+                    onMouseEnter={hoverIn}
+                    onMouseLeave={hoverOut}
+                  >
+                    Sign in
+                  </button>
+                )}
+              </>
+            )}
           </div>
         )}
       </div>
@@ -408,104 +468,107 @@ export function Toolbar({ onCompile, onStop, onRetryEngine, engine, onOpenProjec
 
       <EngineStatusBadge onRetry={onRetryEngine} />
 
-      <div style={{ flex: 1 }} />
+      {/* Desktop-only: spacer + AI provider, user, settings, build number */}
+      {!isMobile && (
+        <>
+          <div style={{ flex: 1 }} />
 
-      {/* AI provider indicator */}
-      {providerLabel ? (
-        <button
-          onClick={() => setSettingsOpen(true)}
-          style={{
-            padding: '3px 10px',
-            borderRadius: '4px',
-            border: '1px solid',
-            borderColor: aiProvider.type === 'google' ? '#4285f4' : '#d97706',
-            background: 'transparent',
-            color: aiProvider.type === 'google' ? '#4285f4' : '#d97706',
-            fontSize: '11px',
-            cursor: 'pointer',
-          }}
-        >
-          {providerLabel}
-        </button>
-      ) : (
-        <span style={{ fontSize: '11px', color: '#666' }}>No AI</span>
-      )}
+          {providerLabel ? (
+            <button
+              onClick={() => setSettingsOpen(true)}
+              style={{
+                padding: '3px 10px',
+                borderRadius: '4px',
+                border: '1px solid',
+                borderColor: aiProvider.type === 'google' ? '#4285f4' : '#d97706',
+                background: 'transparent',
+                color: aiProvider.type === 'google' ? '#4285f4' : '#d97706',
+                fontSize: '11px',
+                cursor: 'pointer',
+              }}
+            >
+              {providerLabel}
+            </button>
+          ) : (
+            <span style={{ fontSize: '11px', color: '#666' }}>No AI</span>
+          )}
 
-      {/* Auth / sign-in */}
-      {authUser ? (
-        <button
-          onClick={() => setSettingsOpen(true)}
-          title={authUser.email ?? 'Account'}
-          style={{
-            padding: '3px 10px',
-            borderRadius: '4px',
-            border: '1px solid #444',
-            background: 'transparent',
-            color: '#ccc',
-            fontSize: '11px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            maxWidth: '180px',
-          }}
-        >
-          <span style={{
-            width: 18, height: 18, borderRadius: '50%',
-            background: '#4a9eff', color: '#fff', fontSize: '10px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontWeight: 600, flexShrink: 0,
-          }}>
-            {(authUser.name ?? authUser.email ?? '?')[0]!.toUpperCase()}
+          {authUser ? (
+            <button
+              onClick={() => setSettingsOpen(true)}
+              title={authUser.email ?? 'Account'}
+              style={{
+                padding: '3px 10px',
+                borderRadius: '4px',
+                border: '1px solid #444',
+                background: 'transparent',
+                color: '#ccc',
+                fontSize: '11px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                maxWidth: '180px',
+              }}
+            >
+              <span style={{
+                width: 18, height: 18, borderRadius: '50%',
+                background: '#4a9eff', color: '#fff', fontSize: '10px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontWeight: 600, flexShrink: 0,
+              }}>
+                {(authUser.name ?? authUser.email ?? '?')[0]!.toUpperCase()}
+              </span>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {authUser.email ?? authUser.name}
+              </span>
+            </button>
+          ) : (
+            <button
+              onClick={handleGoogleSignIn}
+              style={{
+                padding: '3px 10px',
+                borderRadius: '4px',
+                border: 'none',
+                background: '#4285f4',
+                color: '#fff',
+                fontSize: '11px',
+                cursor: 'pointer',
+              }}
+            >
+              Sign in
+            </button>
+          )}
+
+          <button
+            title="Settings"
+            onClick={() => setSettingsOpen(true)}
+            style={{
+              padding: '4px 8px',
+              borderRadius: '4px',
+              border: '1px solid #444',
+              background: 'transparent',
+              color: '#ccc',
+              cursor: 'pointer',
+              fontSize: '14px',
+            }}
+          >
+            ⚙
+          </button>
+
+          <span
+            title={`Build ${__BUILD_NUMBER__} (${__COMMIT_HASH__})`}
+            style={{
+              fontSize: '10px',
+              color: '#555',
+              fontFamily: 'monospace',
+              userSelect: 'none',
+            }}
+          >
+            b{__BUILD_NUMBER__}
           </span>
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {authUser.email ?? authUser.name}
-          </span>
-        </button>
-      ) : (
-        <button
-          onClick={handleGoogleSignIn}
-          style={{
-            padding: '3px 10px',
-            borderRadius: '4px',
-            border: 'none',
-            background: '#4285f4',
-            color: '#fff',
-            fontSize: '11px',
-            cursor: 'pointer',
-          }}
-        >
-          Sign in
-        </button>
+        </>
       )}
-
-      <button
-        title="Settings"
-        onClick={() => setSettingsOpen(true)}
-        style={{
-          padding: '4px 8px',
-          borderRadius: '4px',
-          border: '1px solid #444',
-          background: 'transparent',
-          color: '#ccc',
-          cursor: 'pointer',
-          fontSize: '14px',
-        }}
-      >
-        ⚙
-      </button>
-
-      <span
-        title={`Build ${__BUILD_NUMBER__} (${__COMMIT_HASH__})`}
-        style={{
-          fontSize: '10px',
-          color: '#555',
-          fontFamily: 'monospace',
-          userSelect: 'none',
-        }}
-      >
-        b{__BUILD_NUMBER__}
-      </span>
 
       <ProviderSettingsModal
         isOpen={settingsOpen}
