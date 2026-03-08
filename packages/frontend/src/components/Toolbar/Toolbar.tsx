@@ -434,6 +434,11 @@ export function Toolbar({ onCompile, onStop, onRetryEngine, engine, onOpenProjec
                     Sign in
                   </button>
                 )}
+
+                <div style={menuSep} />
+                <span style={{ ...menuLabelStyle, color: '#555', fontSize: '10px', fontFamily: 'monospace' }}>
+                  Build {__BUILD_NUMBER__} ({__COMMIT_HASH__})
+                </span>
               </>
             )}
           </div>
