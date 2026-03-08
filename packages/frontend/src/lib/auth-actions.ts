@@ -64,7 +64,7 @@ export async function signInWithGoogle() {
  */
 export async function signInWithGoogleAI() {
   return signInWithPopup('google', {
-    scopes: 'https://www.googleapis.com/auth/cloud-platform',
+    scopes: 'https://www.googleapis.com/auth/generative-language.tuning https://www.googleapis.com/auth/generative-language.retriever',
     queryParams: { access_type: 'offline', prompt: 'consent' },
   });
 }
