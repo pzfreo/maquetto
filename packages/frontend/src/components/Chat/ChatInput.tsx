@@ -5,9 +5,10 @@ interface ChatInputProps {
   disabled?: boolean;
   isStreaming?: boolean;
   onStop?: () => void;
+  placeholder?: string;
 }
 
-export function ChatInput({ onSend, disabled, isStreaming, onStop }: ChatInputProps) {
+export function ChatInput({ onSend, disabled, isStreaming, onStop, placeholder }: ChatInputProps) {
   const [input, setInput] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -68,7 +69,7 @@ export function ChatInput({ onSend, disabled, isStreaming, onStop }: ChatInputPr
         }}
         onKeyDown={handleKeyDown}
         disabled={disabled}
-        placeholder="Ask about your design…"
+        placeholder={placeholder ?? "Ask about your design…"}
         rows={1}
         style={{
           flex: 1,
