@@ -7,34 +7,22 @@ import { DataUrlSafeChatTransport } from './data-url-safe-transport';
  * Creates a ChatTransport that talks directly to Google Gemini.
  * Google's Generative AI API supports CORS, so no proxy needed.
  *
- * @param credential - A Gemini API key (BYOK) or OAuth access token
- * @param useOAuth - If true, send credential as Bearer header instead of API key
+ * @param credential - A Gemini API key (BYOK) or OAuth access token.
+ *   Both are passed as apiKey — Google's generativelanguage.googleapis.com
+ *   accepts OAuth tokens via the ?key= parameter (same as API keys).
  */
 export function createGoogleTransport(
   credential: string,
   systemPrompt: string,
   compileFn: CompileFn,
   modelId?: string,
-  useOAuth?: boolean,
 ) {
   const resolvedModel = modelId || 'gemini-3-flash-preview';
-  console.log(`[Google] Initializing Gemini transport (model: ${resolvedModel}, oauth: ${!!useOAuth})`);
+  console.log(`[Google] Initializing Gemini transport (model: ${resolvedModel})`);
 
-  // OAuth tokens must be sent as Bearer header; API keys go as ?key= query param.
-  // The SDK always appends ?key= to the URL, so for OAuth we use a custom fetch
-  // that strips the key param and adds the Authorization header instead.
-  const google = useOAuth
-    ? createGoogleGenerativeAI({
-        apiKey: 'oauth',
-        fetch: (url, init) => {
-          const u = new URL(typeof url === 'string' ? url : (url as Request).url);
-          u.searchParams.delete('key');
-          const headers = new Headers(init?.headers);
-          headers.set('Authorization', `Bearer ${credential}`);
-          return fetch(u.toString(), { ...init, headers });
-        },
-      })
-    : createGoogleGenerativeAI({ apiKey: credential });
+  // Both API keys and OAuth access tokens work via ?key= on the
+  // generativelanguage.googleapis.com endpoint (which has CORS support).
+  const google = createGoogleGenerativeAI({ apiKey: credential });
 
   const tools = { test_code: createTestCodeTool(compileFn) };
 
