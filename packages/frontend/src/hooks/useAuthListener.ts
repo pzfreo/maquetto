@@ -25,6 +25,29 @@ interface OAuthResult {
   code?: string;
 }
 
+const PENDING_GOOGLE_AI_KEY = 'maquetto:pending-google-ai';
+
+/**
+ * Signal that the next Google OAuth sign-in should auto-configure Google AI.
+ * Called from the UI before opening the OAuth popup.
+ */
+export function setPendingGoogleAI() {
+  localStorage.setItem(PENDING_GOOGLE_AI_KEY, 'true');
+}
+
+/**
+ * Auto-configure the AI provider if a pending Google AI flag is set
+ * and we received a provider_token from the OAuth flow.
+ */
+function maybeAutoConfigureAI(providerToken: string | null) {
+  if (!localStorage.getItem(PENDING_GOOGLE_AI_KEY)) return;
+  localStorage.removeItem(PENDING_GOOGLE_AI_KEY);
+  if (providerToken) {
+    console.log('[Auth] Auto-configuring Google AI provider from OAuth');
+    useAppStore.getState().setAIProvider({ type: 'google-oauth', credential: providerToken });
+  }
+}
+
 /**
  * Process OAuth result from popup (implicit tokens or PKCE code).
  */
@@ -43,9 +66,10 @@ async function handleOAuthResult(result: OAuthResult) {
       return;
     }
     if (data.session) {
+      const token = result.provider_token ?? data.session.provider_token ?? null;
+      setProviderToken(token);
+      maybeAutoConfigureAI(token);
       setAuthUser(extractAuthUser(data.session));
-      // Use provider_token from the callback (setSession doesn't return it)
-      setProviderToken(result.provider_token ?? data.session.provider_token ?? null);
       // Capture provider refresh token for Google AI OAuth
       if (result.provider_refresh_token) {
         console.log('[Auth] Storing provider refresh token');
@@ -62,8 +86,10 @@ async function handleOAuthResult(result: OAuthResult) {
       return;
     }
     if (data.session) {
+      const token = data.session.provider_token ?? null;
+      setProviderToken(token);
+      maybeAutoConfigureAI(token);
       setAuthUser(extractAuthUser(data.session));
-      setProviderToken(data.session.provider_token ?? null);
       if (data.session.provider_refresh_token) {
         console.log('[Auth] Storing provider refresh token (PKCE)');
         setProviderRefreshToken(data.session.provider_refresh_token);

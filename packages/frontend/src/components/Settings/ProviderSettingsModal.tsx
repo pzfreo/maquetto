@@ -3,6 +3,7 @@ import { AI_MODELS, DEFAULT_MODEL } from '@maquetto/api-types';
 import type { AIProviderType } from '@maquetto/api-types';
 import { useAppStore } from '../../store';
 import { signInWithGoogle, signInWithGoogleAI } from '../../lib/auth-actions';
+import { setPendingGoogleAI } from '../../hooks/useAuthListener';
 import { CAD_SYSTEM_PROMPT } from '../../ai/system-prompt';
 
 interface ProviderSettingsModalProps {
@@ -19,7 +20,6 @@ export function ProviderSettingsModal({
   const aiProvider = useAppStore((s) => s.aiProvider);
   const setAIProvider = useAppStore((s) => s.setAIProvider);
   const authUser = useAppStore((s) => s.authUser);
-  const providerToken = useAppStore((s) => s.providerToken);
   const signOut = useAppStore((s) => s.signOut);
   const customSystemPrompt = useAppStore((s) => s.customSystemPrompt);
   const setCustomSystemPrompt = useAppStore((s) => s.setCustomSystemPrompt);
@@ -37,14 +37,6 @@ export function ProviderSettingsModal({
     }
   }, [isOpen, customSystemPrompt]);
 
-  // When Google AI OAuth completes, auto-set the AI provider
-  useEffect(() => {
-    if (connectingGoogleAI && providerToken) {
-      setAIProvider({ type: 'google-oauth', credential: providerToken });
-      setConnectingGoogleAI(false);
-    }
-  }, [connectingGoogleAI, providerToken, setAIProvider]);
-
   if (!isOpen) return null;
 
   const handleGoogleSignIn = async () => {
@@ -58,6 +50,7 @@ export function ProviderSettingsModal({
   const handleConnectGoogleAI = async () => {
     setConnectingGoogleAI(true);
     try {
+      setPendingGoogleAI();
       await signInWithGoogleAI();
     } catch {
       setConnectingGoogleAI(false);
@@ -583,13 +576,13 @@ export function ProviderSettingsModal({
             Close
           </button>
           <button
-            onClick={() => {
+            onClick={async () => {
               if (!window.confirm('Clear all settings and sign out? This will reset the app to the first-run experience.')) return;
               // Clear all maquetto localStorage keys
               const keys = Object.keys(localStorage).filter((k) => k.startsWith('maquetto:'));
               keys.forEach((k) => localStorage.removeItem(k));
               localStorage.removeItem('maquetto:first-run-complete');
-              signOut();
+              await signOut();
               window.location.reload();
             }}
             style={{
