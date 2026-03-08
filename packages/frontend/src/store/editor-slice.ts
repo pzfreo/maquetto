@@ -27,7 +27,17 @@ export const createEditorSlice: StateCreator<AppStore, [], [], EditorSlice> = (s
     } catch (e) {
       console.warn('[Editor] Failed to persist code to localStorage:', e);
     }
-    set({ code, isDirty: true });
+    set((state) => ({
+      code,
+      isDirty: true,
+      // Clear stale errors when the user edits code so the error panel
+      // doesn't persist after the code has been changed.
+      ...(state.compilationStatus === 'error' ? {
+        compilationStatus: 'idle' as const,
+        errors: [],
+        warnings: [],
+      } : {}),
+    }));
   },
   setDirty: (isDirty) => set({ isDirty }),
   resetCode: () => {
