@@ -195,6 +195,7 @@ export function ProviderSettingsModal({
                 </div>
                 <div style={{ fontSize: '11px', color: '#888' }}>
                   {authUser.provider === 'google' ? 'Google' : 'GitHub'}
+                  {aiProvider.type === 'google-oauth' && ' + Gemini AI'}
                 </div>
               </div>
               <button
@@ -213,31 +214,65 @@ export function ProviderSettingsModal({
               </button>
             </div>
           ) : (
-            <button
-              onClick={handleGoogleSignIn}
-              style={{
-                padding: '10px 16px',
-                borderRadius: '6px',
-                border: 'none',
-                background: '#4285f4',
-                color: '#fff',
-                fontSize: '13px',
-                cursor: 'pointer',
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 18 18" fill="none">
-                <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615Z" fill="#fff"/>
-                <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18Z" fill="#fff" opacity="0.8"/>
-                <path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.997 8.997 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332Z" fill="#fff" opacity="0.6"/>
-                <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.166 6.656 3.58 9 3.58Z" fill="#fff" opacity="0.9"/>
-              </svg>
-              Sign in with Google
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <button
+                onClick={handleConnectGoogleAI}
+                disabled={connectingGoogleAI}
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: connectingGoogleAI ? '#333' : '#4285f4',
+                  color: connectingGoogleAI ? '#888' : '#fff',
+                  fontSize: '13px',
+                  cursor: connectingGoogleAI ? 'not-allowed' : 'pointer',
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 18 18" fill="none">
+                  <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615Z" fill="#fff"/>
+                  <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18Z" fill="#fff" opacity="0.8"/>
+                  <path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.997 8.997 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332Z" fill="#fff" opacity="0.6"/>
+                  <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.166 6.656 3.58 9 3.58Z" fill="#fff" opacity="0.9"/>
+                </svg>
+                {connectingGoogleAI ? 'Connecting...' : 'Sign in with Google + Gemini AI'}
+              </button>
+              <p style={{ fontSize: '11px', color: '#666', margin: '0', textAlign: 'center' }}>
+                Cloud save + AI assistant. No API key needed.
+              </p>
+              <button
+                onClick={handleGoogleSignIn}
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: '6px',
+                  border: '1px solid #4285f4',
+                  background: 'transparent',
+                  color: '#4285f4',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 18 18" fill="none">
+                  <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615Z" fill="#4285f4"/>
+                  <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18Z" fill="#34a853"/>
+                  <path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.997 8.997 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332Z" fill="#fbbc05"/>
+                  <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.166 6.656 3.58 9 3.58Z" fill="#ea4335"/>
+                </svg>
+                Sign in with Google
+              </button>
+              <p style={{ fontSize: '11px', color: '#666', margin: '0', textAlign: 'center' }}>
+                Cloud save only. Set up AI separately below.
+              </p>
+            </div>
           )}
         </div>
 
