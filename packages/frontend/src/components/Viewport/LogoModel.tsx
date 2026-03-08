@@ -1,13 +1,21 @@
-import { useMemo } from 'react';
+import { useRef, useMemo } from 'react';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
+// Module-level start time so rotation is smooth even if component remounts.
+const START = performance.now();
+
 /**
- * 3D cube logo shown in the viewport while the CAD engine loads.
- * Static — no animation to avoid glitching from React/R3F reconciliation.
+ * 3D spinning cube logo shown in the viewport while the CAD engine loads.
+ *
+ * The entire scene graph is built as a single THREE.Group in useMemo and
+ * rendered via <primitive>. React's reconciler only sees the stable object
+ * reference — it never touches rotation or any transform props. Animation
+ * is purely imperative via useFrame, so there's no conflict with React
+ * re-renders or OrbitControls.
  */
 export function LogoModel() {
-
-  const { faces, edgesGeo, edgeMat, mLine, chevronLine, cursorLine } = useMemo(() => {
+  const group = useMemo(() => {
     const blue = '#4a9eff';
     const purple = '#7c5cfc';
     const s = 20;
@@ -38,7 +46,7 @@ export function LogoModel() {
       return geo;
     }
 
-    function makeLineObj(points: number[][], color: string, opacity = 0.7) {
+    function makeLine(points: number[][], color: string, opacity = 0.7) {
       const geo = new THREE.BufferGeometry().setFromPoints(
         points.map((p) => new THREE.Vector3(p[0], p[1], p[2])),
       );
@@ -46,42 +54,54 @@ export function LogoModel() {
       return new THREE.Line(geo, mat);
     }
 
-    return {
-      faces: [
-        { geo: makeQuadGeo(v.ftl, v.ftr, v.btr, v.btl), mat: topMat },
-        { geo: makeQuadGeo(v.ftl, v.btl, v.bbl, v.fbl), mat: leftMat },
-        { geo: makeQuadGeo(v.ftr, v.ftl, v.fbl, v.fbr), mat: rightMat },
-        { geo: makeQuadGeo(v.btr, v.ftr, v.fbr, v.bbr), mat: rightMat },
-        { geo: makeQuadGeo(v.btl, v.btr, v.bbr, v.bbl), mat: leftMat },
-        { geo: makeQuadGeo(v.fbl, v.fbr, v.bbr, v.bbl), mat: topMat },
-      ],
-      edgesGeo: new THREE.EdgesGeometry(new THREE.BoxGeometry(s * 2, s * 2, s * 2)),
-      edgeMat: new THREE.LineBasicMaterial({ color: blue, linewidth: 2 }),
-      mLine: makeLineObj([
-        [-s * 0.6, -s * 0.6, s + 0.1], [-s * 0.6, s * 0.4, s + 0.1],
-        [-s * 0.1, -s * 0.1, s + 0.1], [s * 0.4, s * 0.4, s + 0.1],
-        [s * 0.4, -s * 0.6, s + 0.1],
-      ], blue, 0.8),
-      chevronLine: makeLineObj([
-        [s + 0.1, s * 0.3, s * 0.3],
-        [s + 0.1, 0, -s * 0.1],
-        [s + 0.1, -s * 0.3, s * 0.3],
-      ], purple, 0.8),
-      cursorLine: makeLineObj([
-        [s + 0.1, -s * 0.5, -s * 0.1], [s + 0.1, -s * 0.5, -s * 0.5],
-      ], purple, 0.8),
-    };
+    const g = new THREE.Group();
+
+    // Faces
+    const faceData = [
+      { geo: makeQuadGeo(v.ftl, v.ftr, v.btr, v.btl), mat: topMat },
+      { geo: makeQuadGeo(v.ftl, v.btl, v.bbl, v.fbl), mat: leftMat },
+      { geo: makeQuadGeo(v.ftr, v.ftl, v.fbl, v.fbr), mat: rightMat },
+      { geo: makeQuadGeo(v.btr, v.ftr, v.fbr, v.bbr), mat: rightMat },
+      { geo: makeQuadGeo(v.btl, v.btr, v.bbr, v.bbl), mat: leftMat },
+      { geo: makeQuadGeo(v.fbl, v.fbr, v.bbr, v.bbl), mat: topMat },
+    ];
+    for (const f of faceData) {
+      g.add(new THREE.Mesh(f.geo, f.mat));
+    }
+
+    // Edges
+    const edgesGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(s * 2, s * 2, s * 2));
+    const edgeMat = new THREE.LineBasicMaterial({ color: blue, linewidth: 2 });
+    g.add(new THREE.LineSegments(edgesGeo, edgeMat));
+
+    // "M" letter
+    g.add(makeLine([
+      [-s * 0.6, -s * 0.6, s + 0.1], [-s * 0.6, s * 0.4, s + 0.1],
+      [-s * 0.1, -s * 0.1, s + 0.1], [s * 0.4, s * 0.4, s + 0.1],
+      [s * 0.4, -s * 0.6, s + 0.1],
+    ], blue, 0.8));
+
+    // Chevron
+    g.add(makeLine([
+      [s + 0.1, s * 0.3, s * 0.3],
+      [s + 0.1, 0, -s * 0.1],
+      [s + 0.1, -s * 0.3, s * 0.3],
+    ], purple, 0.8));
+
+    // Cursor
+    g.add(makeLine([
+      [s + 0.1, -s * 0.5, -s * 0.1], [s + 0.1, -s * 0.5, -s * 0.5],
+    ], purple, 0.8));
+
+    return g;
   }, []);
 
-  return (
-    <group rotation={[0, Math.PI / 6, 0]}>
-      {faces.map((f, i) => (
-        <mesh key={i} geometry={f.geo} material={f.mat} />
-      ))}
-      <lineSegments geometry={edgesGeo} material={edgeMat} />
-      <primitive object={mLine} />
-      <primitive object={chevronLine} />
-      <primitive object={cursorLine} />
-    </group>
-  );
+  const ref = useRef<THREE.Group>(group);
+
+  useFrame(() => {
+    const elapsed = (performance.now() - START) / 1000;
+    ref.current.rotation.y = elapsed * 0.3;
+  });
+
+  return <primitive object={group} />;
 }
