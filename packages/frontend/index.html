@@ -2,12 +2,61 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Maquetto — AI-Powered CAD IDE for 3D Modeling in Your Browser</title>
+    <meta name="description" content="Design 3D models with AI assistance directly in your browser. Write Python CAD code with Build123d, see real-time 3D previews, and use AI to modify designs through natural language." />
+    <meta name="keywords" content="CAD, 3D modeling, AI, Build123d, Python, browser CAD, parametric design, OpenCASCADE, generative design" />
+    <meta name="author" content="Paul Fremantle" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://maquet.to/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Maquetto — AI-Powered CAD IDE" />
+    <meta property="og:description" content="Design 3D models with AI assistance directly in your browser. Write Python CAD code, see real-time 3D previews, and modify designs through natural language." />
+    <meta property="og:url" content="https://maquet.to/" />
+    <meta property="og:site_name" content="Maquetto" />
+    <meta property="og:image" content="https://maquet.to/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Maquetto — AI-Powered CAD IDE" />
+    <meta name="twitter:description" content="Design 3D models with AI assistance directly in your browser. Python CAD code + real-time 3D preview + AI natural language editing." />
+    <meta name="twitter:image" content="https://maquet.to/og-image.png" />
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Maquetto",
+      "description": "AI-powered CAD IDE for 3D modeling in your browser using Build123d and Python",
+      "url": "https://maquet.to",
+      "applicationCategory": "DesignApplication",
+      "operatingSystem": "Any (browser-based)",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "author": {
+        "@type": "Person",
+        "name": "Paul Fremantle"
+      }
+    }
+    </script>
+
+    <!-- Favicons -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
     <link rel="apple-touch-icon" sizes="192x192" href="/favicon-192.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Maquetto — AI-Powered CAD IDE</title>
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#1e1e2e" />
+
+    <!-- Preloads -->
     <link
       rel="preload"
       href="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.asm.wasm"
