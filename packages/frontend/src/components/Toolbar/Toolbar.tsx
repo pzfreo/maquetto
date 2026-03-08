@@ -33,8 +33,6 @@ export function Toolbar({ onCompile, onStop, onRetryEngine, engine, onOpenProjec
   const [exporting, setExporting] = useState<ExportFormat | null>(null);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
-  // Pending action to execute after user provides a title (when it was "Untitled")
-  const pendingActionRef = useRef<(() => void) | null>(null);
   const fileMenuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -78,16 +76,19 @@ export function Toolbar({ onCompile, onStop, onRetryEngine, engine, onOpenProjec
   /**
    * If the project is still "Untitled", prompt the user to name it first,
    * then execute the action. Otherwise execute immediately.
+   * Uses window.prompt for reliable cross-platform behavior (esp. mobile).
    */
   const requireTitle = useCallback((action: () => void) => {
     if (projectTitle === 'Untitled') {
-      pendingActionRef.current = action;
-      setTitleDraft('');
-      setEditingTitle(true);
+      const name = window.prompt('Enter a name for your project:');
+      if (!name?.trim()) return; // cancelled or empty
+      updateProjectTitle(name.trim());
+      // Defer so the store update settles before the action runs
+      setTimeout(action, 0);
       return;
     }
     action();
-  }, [projectTitle]);
+  }, [projectTitle, updateProjectTitle]);
 
   const handleNew = () => {
     setFileMenuOpen(false);
@@ -159,13 +160,6 @@ export function Toolbar({ onCompile, onStop, onRetryEngine, engine, onOpenProjec
     const trimmed = titleDraft.trim();
     if (trimmed && trimmed !== projectTitle) {
       updateProjectTitle(trimmed);
-    }
-    // Execute pending action (save/export) if title was provided
-    const pending = pendingActionRef.current;
-    pendingActionRef.current = null;
-    if (pending && trimmed) {
-      // Defer so the store update from updateProjectTitle settles first
-      setTimeout(pending, 0);
     }
   }, [titleDraft, projectTitle, updateProjectTitle]);
 
@@ -271,7 +265,7 @@ export function Toolbar({ onCompile, onStop, onRetryEngine, engine, onOpenProjec
           onBlur={handleTitleSubmit}
           onKeyDown={(e) => {
             if (e.key === 'Enter') handleTitleSubmit();
-            if (e.key === 'Escape') { setEditingTitle(false); pendingActionRef.current = null; }
+            if (e.key === 'Escape') setEditingTitle(false);
           }}
           style={{
             background: '#2a2a4e',
