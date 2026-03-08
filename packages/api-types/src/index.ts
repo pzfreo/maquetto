@@ -9,6 +9,8 @@ export type {
   EngineError,
   EnginePhase,
   EngineStatus,
+  ExportFormat,
+  ExportResult,
   PartMetadata,
   QualityLevel,
 } from './engine';
@@ -34,6 +36,8 @@ export type {
   CompilationStatus,
   EditorSlice,
   EngineSlice,
+  Project,
+  ProjectSlice,
   SettingsSlice,
   VersionHistorySlice,
   VersionSource,

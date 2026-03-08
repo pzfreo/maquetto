@@ -166,6 +166,7 @@ import numpy
     // 10. Load the execute helper script
     console.log('[Worker] Loading execute helper...');
     await pyodide.runPythonAsync(EXECUTE_HELPER);
+    await pyodide.runPythonAsync(EXPORT_HELPER);
     console.log('[Worker] Engine ready');
     postStatus('ready', 100);
   } catch (err) {
@@ -232,6 +233,78 @@ async function handleCompile(
   }
 }
 
+/**
+ * Export the model to STL or STEP format.
+ * Runs user code, finds shapes, then exports to the requested format.
+ */
+async function handleExport(
+  requestId: string,
+  code: string,
+  format: string,
+): Promise<void> {
+  if (!pyodide) {
+    const msg: WorkerResponse = {
+      type: 'export-error',
+      requestId,
+      error: { code: 'NOT_READY', message: 'Engine not initialized' },
+    };
+    self.postMessage(msg);
+    return;
+  }
+
+  try {
+    console.log(`[Worker] Exporting (format=${format}, ${code.length} chars)...`);
+    pyodide.globals.set('_user_code', code);
+    pyodide.globals.set('_export_format', format);
+
+    blockNetworkAPIs();
+    let resultJson: string;
+    try {
+      resultJson = (await pyodide.runPythonAsync(
+        '_export_to_format(_user_code, _export_format)',
+      )) as string;
+    } finally {
+      restoreNetworkAPIs();
+    }
+
+    const result = JSON.parse(resultJson);
+    if (result.error) {
+      const msg: WorkerResponse = {
+        type: 'export-error',
+        requestId,
+        error: { code: 'EXPORT_FAILED', message: result.error },
+      };
+      self.postMessage(msg);
+      return;
+    }
+
+    // Convert base64 to ArrayBuffer for zero-copy transfer
+    const binary = atob(result.dataBase64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    const buffer = bytes.buffer;
+
+    const msg: WorkerResponse = {
+      type: 'export-result',
+      requestId,
+      data: buffer,
+      filename: result.filename,
+    };
+    self.postMessage(msg, { transfer: [buffer] });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('[Worker] Export failed:', message);
+    const msg: WorkerResponse = {
+      type: 'export-error',
+      requestId,
+      error: { code: 'EXPORT_FAILED', message },
+    };
+    self.postMessage(msg);
+  }
+}
+
 // Message handler
 self.onmessage = (e: MessageEvent<WorkerRequest>) => {
   const msg = e.data;
@@ -244,6 +317,10 @@ self.onmessage = (e: MessageEvent<WorkerRequest>) => {
 
     case 'compile':
       void handleCompile(msg.requestId, msg.code, msg.quality);
+      break;
+
+    case 'export':
+      void handleExport(msg.requestId, msg.code, msg.format);
       break;
   }
 };
@@ -502,4 +579,88 @@ def _execute_and_export(code_str, quality_level):
         'warnings': [],
         'executionTimeMs': round(elapsed),
     })
+`;
+
+/**
+ * Python helper for exporting to STL/STEP formats.
+ * Re-runs user code to get shapes, then exports to the requested format.
+ */
+const EXPORT_HELPER = `
+def _export_to_format(code_str, fmt):
+    """Execute user code, find shapes, export to STL or STEP."""
+    from build123d import (
+        Shape, Compound, Part, Sketch, BuildPart, BuildSketch, BuildLine,
+        export_stl, export_step, Axis, Color
+    )
+    import json
+    import base64
+
+    # Execute user code in a fresh namespace
+    import builtins as _builtins_mod
+    _original_import = _builtins_mod.__import__
+    _BLOCKED_MODULES = frozenset({
+        'js', 'pyodide', 'pyodide_js', 'pyodide_js._api',
+        'pyodide.http', 'pyodide.ffi', 'pyodide.code',
+    })
+    def _safe_import(name, *args, **kwargs):
+        if name in _BLOCKED_MODULES or name.startswith('pyodide.'):
+            raise ImportError(f"Module '{name}' is not available in the CAD sandbox")
+        return _original_import(name, *args, **kwargs)
+
+    namespace = {'__builtins__': __builtins__}
+    exec('from build123d import *', namespace)
+    exec('import numpy', namespace)
+    namespace['__builtins__'] = dict(vars(_builtins_mod))
+    namespace['__builtins__']['__import__'] = _safe_import
+
+    pre_exec_names = set(namespace.keys())
+
+    try:
+        exec(code_str, namespace)
+    except Exception as e:
+        return json.dumps({'error': f'Code execution failed: {e}'})
+
+    # Find shapes (same logic as _execute_and_export)
+    shapes = []
+    for name, obj in namespace.items():
+        if name in pre_exec_names or name.startswith('_'):
+            continue
+        if isinstance(obj, (Shape, Compound, Part, Sketch)):
+            shapes.append((name, obj))
+        elif hasattr(obj, 'part') and isinstance(getattr(obj, 'part', None), (Shape, Part)):
+            mode = getattr(obj, 'mode', None)
+            if mode is not None and hasattr(mode, 'name') and mode.name != 'ADD':
+                continue
+            shapes.append((name, obj.part))
+        elif hasattr(obj, 'sketch') and isinstance(getattr(obj, 'sketch', None), (Shape, Sketch)):
+            shapes.append((name, obj.sketch))
+
+    if not shapes:
+        return json.dumps({'error': 'No shapes found to export'})
+
+    shape_objects = [s[1] for s in shapes]
+    if len(shape_objects) == 1:
+        assembly = shape_objects[0]
+    else:
+        assembly = Compound(children=shape_objects)
+
+    ext = 'stl' if fmt == 'stl' else 'step'
+    out_path = f'/tmp/export.{ext}'
+
+    try:
+        if fmt == 'stl':
+            export_stl(assembly, out_path,
+                       linear_deflection=0.01, angular_deflection=0.2)
+        else:
+            export_step(assembly, out_path)
+
+        with open(out_path, 'rb') as f:
+            data = f.read()
+        print(f'[export] {fmt.upper()} file size: {len(data)} bytes')
+        return json.dumps({
+            'dataBase64': base64.b64encode(data).decode('ascii'),
+            'filename': f'model.{ext}',
+        })
+    except Exception as e:
+        return json.dumps({'error': f'{fmt.upper()} export failed: {e}'})
 `;

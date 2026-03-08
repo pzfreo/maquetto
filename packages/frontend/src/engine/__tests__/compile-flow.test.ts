@@ -16,6 +16,9 @@ function createMockEngine(result: CompileResult): CadEngine {
     async compile() {
       return result;
     },
+    async exportModel() {
+      return { data: new ArrayBuffer(0), filename: 'test.stl' };
+    },
     cancelCompile() { /* noop in test */ },
     retry() {
       for (const cb of listeners) {

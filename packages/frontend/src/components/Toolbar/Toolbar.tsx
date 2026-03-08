@@ -1,31 +1,46 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { AI_MODELS, DEFAULT_MODEL } from '@maquetto/api-types';
-import type { AIProviderType } from '@maquetto/api-types';
+import type { AIProviderType, CadEngine, ExportFormat } from '@maquetto/api-types';
 import { useAppStore } from '../../store';
 import { EngineStatusBadge } from './EngineStatusBadge';
 import { ProviderSettingsModal } from '../Settings/ProviderSettingsModal';
 import { signInWithGoogle } from '../../lib/auth-actions';
+import { useProjects } from '../../hooks/useProjects';
+import { downloadBlob, downloadText } from '../../lib/download';
+import { supabaseConfigured } from '../../lib/supabase';
 
 interface ToolbarProps {
   onCompile?: () => void;
   onStop?: () => void;
   onRetryEngine?: () => void;
+  engine?: CadEngine | null;
+  onOpenProjects?: () => void;
 }
 
-export function Toolbar({ onCompile, onStop, onRetryEngine }: ToolbarProps) {
+export function Toolbar({ onCompile, onStop, onRetryEngine, engine, onOpenProjects }: ToolbarProps) {
   const enginePhase = useAppStore((s) => s.engineStatus.phase);
   const compilationStatus = useAppStore((s) => s.compilationStatus);
   const aiProvider = useAppStore((s) => s.aiProvider);
   const authUser = useAppStore((s) => s.authUser);
-  const resetCode = useAppStore((s) => s.resetCode);
-  const clearVersionHistory = useAppStore((s) => s.clearVersionHistory);
-  const clearCompilation = useAppStore((s) => s.clearCompilation);
+  const code = useAppStore((s) => s.code);
+  const isDirty = useAppStore((s) => s.isDirty);
+  const currentProject = useAppStore((s) => s.currentProject);
+  const projectSaving = useAppStore((s) => s.projectSaving);
+  const updateProjectTitle = useAppStore((s) => s.updateProjectTitle);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
+  const [exporting, setExporting] = useState<ExportFormat | null>(null);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
   const fileMenuRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  const { save, newProject, canSave } = useProjects();
 
   const isReady = enginePhase === 'ready';
   const isCompiling = compilationStatus === 'compiling';
+  const projectTitle = currentProject?.title ?? 'Untitled';
 
   // AI provider + model display
   const providerLabel = (() => {
@@ -48,13 +63,85 @@ export function Toolbar({ onCompile, onStop, onRetryEngine }: ToolbarProps) {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [fileMenuOpen]);
 
+  // Focus title input when editing
+  useEffect(() => {
+    if (editingTitle && titleInputRef.current) {
+      titleInputRef.current.focus();
+      titleInputRef.current.select();
+    }
+  }, [editingTitle]);
+
   const handleNew = () => {
     setFileMenuOpen(false);
-    resetCode();
-    clearVersionHistory();
-    clearCompilation();
-    useAppStore.getState().clearChat?.();
+    newProject();
   };
+
+  const handleSave = useCallback(async () => {
+    setFileMenuOpen(false);
+    await save();
+  }, [save]);
+
+  const handleExport = useCallback(async (format: ExportFormat) => {
+    setFileMenuOpen(false);
+    if (!engine || !isReady) return;
+    setExporting(format);
+    try {
+      const result = await engine.exportModel(code, format);
+      if (result.error) {
+        console.error(`[Toolbar] Export error: ${result.error}`);
+        alert(`Export failed: ${result.error}`);
+        return;
+      }
+      const mimeType = format === 'stl'
+        ? 'application/vnd.ms-stt'
+        : 'application/step';
+      downloadBlob(result.data, result.filename, mimeType);
+    } catch (err) {
+      console.error('[Toolbar] Export failed:', err);
+      alert(`Export failed: ${err}`);
+    } finally {
+      setExporting(null);
+    }
+  }, [engine, isReady, code]);
+
+  const handleExportPython = useCallback(() => {
+    setFileMenuOpen(false);
+    const filename = currentProject?.title
+      ? `${currentProject.title.toLowerCase().replace(/\s+/g, '_')}.py`
+      : 'model.py';
+    downloadText(code, filename, 'text/x-python');
+  }, [code, currentProject]);
+
+  const handleImportPython = useCallback(() => {
+    setFileMenuOpen(false);
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileImport = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = reader.result as string;
+      useAppStore.getState().setCode(text);
+      // Use filename (minus extension) as project title if no project loaded
+      if (!currentProject) {
+        const name = file.name.replace(/\.py$/i, '').replace(/_/g, ' ');
+        useAppStore.getState().updateProjectTitle(name);
+      }
+    };
+    reader.readAsText(file);
+    // Reset input so same file can be re-imported
+    e.target.value = '';
+  }, [currentProject]);
+
+  const handleTitleSubmit = useCallback(() => {
+    setEditingTitle(false);
+    const trimmed = titleDraft.trim();
+    if (trimmed && trimmed !== projectTitle) {
+      updateProjectTitle(trimmed);
+    }
+  }, [titleDraft, projectTitle, updateProjectTitle]);
 
   const handleGoogleSignIn = async () => {
     try {
@@ -74,6 +161,18 @@ export function Toolbar({ onCompile, onStop, onRetryEngine }: ToolbarProps) {
     textAlign: 'left' as const,
   };
 
+  const disabledMenuItemStyle = {
+    ...menuItemStyle,
+    color: '#666',
+    cursor: 'not-allowed' as const,
+  };
+
+  const menuSep = {
+    height: '1px',
+    background: '#333',
+    margin: '4px 0',
+  };
+
   const dropdownStyle = {
     position: 'absolute' as const,
     top: '100%',
@@ -83,9 +182,18 @@ export function Toolbar({ onCompile, onStop, onRetryEngine }: ToolbarProps) {
     border: '1px solid #444',
     borderRadius: '6px',
     padding: '4px 0',
-    minWidth: '180px',
+    minWidth: '200px',
     zIndex: 100,
     boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+  };
+
+  const hoverIn = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!e.currentTarget.disabled) {
+      e.currentTarget.style.background = '#2a2a4e';
+    }
+  };
+  const hoverOut = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.currentTarget.style.background = 'transparent';
   };
 
   return (
@@ -110,12 +218,60 @@ export function Toolbar({ onCompile, onStop, onRetryEngine }: ToolbarProps) {
           fontWeight: 600,
           fontSize: '15px',
           color: '#e0e0e0',
-          marginRight: '8px',
+          marginRight: '4px',
         }}
       >
         <img src="/logo.svg" alt="" width={22} height={22} />
         Maquetto
       </span>
+
+      {/* Editable project title */}
+      {editingTitle ? (
+        <input
+          ref={titleInputRef}
+          value={titleDraft}
+          onChange={(e) => setTitleDraft(e.target.value)}
+          onBlur={handleTitleSubmit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleTitleSubmit();
+            if (e.key === 'Escape') setEditingTitle(false);
+          }}
+          style={{
+            background: '#2a2a4e',
+            border: '1px solid #4a9eff',
+            borderRadius: '4px',
+            color: '#e0e0e0',
+            fontSize: '13px',
+            padding: '2px 8px',
+            outline: 'none',
+            maxWidth: '200px',
+          }}
+        />
+      ) : (
+        <button
+          onClick={() => {
+            setTitleDraft(projectTitle);
+            setEditingTitle(true);
+          }}
+          title="Click to rename"
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: '#999',
+            fontSize: '13px',
+            cursor: 'pointer',
+            padding: '2px 6px',
+            borderRadius: '4px',
+            maxWidth: '200px',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {projectTitle}
+          {isDirty ? ' *' : ''}
+        </button>
+      )}
 
       {/* File menu */}
       <div ref={fileMenuRef} style={{ position: 'relative' }}>
@@ -143,17 +299,75 @@ export function Toolbar({ onCompile, onStop, onRetryEngine }: ToolbarProps) {
         </button>
         {fileMenuOpen && (
           <div style={{ ...dropdownStyle, left: 0, right: 'auto' }}>
-            <button
-              onClick={handleNew}
-              style={menuItemStyle}
-              onMouseEnter={(e) => { e.currentTarget.style.background = '#2a2a4e'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-            >
+            <button onClick={handleNew} style={menuItemStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>
               New
+            </button>
+
+            {/* Cloud save/load — only shown when Supabase is configured */}
+            {supabaseConfigured && (
+              <>
+                <button
+                  onClick={handleSave}
+                  disabled={!canSave}
+                  style={canSave ? menuItemStyle : disabledMenuItemStyle}
+                  onMouseEnter={hoverIn}
+                  onMouseLeave={hoverOut}
+                >
+                  {projectSaving ? 'Saving...' : 'Save to Cloud'}
+                </button>
+                <button
+                  onClick={() => { setFileMenuOpen(false); onOpenProjects?.(); }}
+                  disabled={!authUser}
+                  style={authUser ? menuItemStyle : disabledMenuItemStyle}
+                  onMouseEnter={hoverIn}
+                  onMouseLeave={hoverOut}
+                >
+                  My Projects...
+                </button>
+              </>
+            )}
+
+            <div style={menuSep} />
+
+            <button onClick={handleImportPython} style={menuItemStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>
+              Import Python...
+            </button>
+            <button onClick={handleExportPython} style={menuItemStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>
+              Export Python
+            </button>
+
+            <div style={menuSep} />
+
+            <button
+              onClick={() => handleExport('stl')}
+              disabled={!isReady || !!exporting}
+              style={isReady && !exporting ? menuItemStyle : disabledMenuItemStyle}
+              onMouseEnter={hoverIn}
+              onMouseLeave={hoverOut}
+            >
+              {exporting === 'stl' ? 'Exporting STL...' : 'Export STL'}
+            </button>
+            <button
+              onClick={() => handleExport('step')}
+              disabled={!isReady || !!exporting}
+              style={isReady && !exporting ? menuItemStyle : disabledMenuItemStyle}
+              onMouseEnter={hoverIn}
+              onMouseLeave={hoverOut}
+            >
+              {exporting === 'step' ? 'Exporting STEP...' : 'Export STEP'}
             </button>
           </div>
         )}
       </div>
+
+      {/* Hidden file input for import */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".py,.txt"
+        style={{ display: 'none' }}
+        onChange={handleFileImport}
+      />
 
       {isCompiling ? (
         <button
@@ -176,7 +390,7 @@ export function Toolbar({ onCompile, onStop, onRetryEngine }: ToolbarProps) {
         <button
           onClick={onCompile}
           disabled={!isReady}
-          title={!isReady ? 'Engine is loading…' : 'Run code (Ctrl+Enter)'}
+          title={!isReady ? 'Engine is loading...' : 'Run code (Ctrl+Enter)'}
           style={{
             padding: '4px 14px',
             borderRadius: '4px',
@@ -216,7 +430,6 @@ export function Toolbar({ onCompile, onStop, onRetryEngine }: ToolbarProps) {
       ) : (
         <span style={{ fontSize: '11px', color: '#666' }}>No AI</span>
       )}
-
 
       {/* Auth / sign-in */}
       {authUser ? (

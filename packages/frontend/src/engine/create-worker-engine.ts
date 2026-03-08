@@ -2,13 +2,23 @@ import type {
   CadEngine,
   CompileResult,
   EngineStatus,
+  ExportFormat,
+  ExportResult,
   QualityLevel,
   WorkerResponse,
 } from '@maquetto/api-types';
 
-interface PendingRequest {
+interface PendingCompile {
+  type: 'compile';
   resolve: (result: CompileResult) => void;
 }
+
+interface PendingExport {
+  type: 'export';
+  resolve: (result: ExportResult) => void;
+}
+
+type PendingRequest = PendingCompile | PendingExport;
 
 function createWorker(): Worker {
   return new Worker(new URL('./cad-worker.ts', import.meta.url), {
@@ -36,30 +46,60 @@ function wireWorker(
         }
         break;
 
-      case 'compile-result':
+      case 'compile-result': {
         console.log(`[Engine] Compile result received: ${msg.result.parts.length} parts, ${msg.result.errors.length} errors`);
-        pending.get(msg.requestId)?.resolve(msg.result);
+        const compileReq = pending.get(msg.requestId);
+        if (compileReq?.type === 'compile') compileReq.resolve(msg.result);
         pending.delete(msg.requestId);
         break;
+      }
 
-      case 'compile-error':
+      case 'compile-error': {
         console.error(`[Engine] Compile error: ${msg.error.message}`);
-        pending.get(msg.requestId)?.resolve({
-          gltfBase64: '',
-          parts: [],
-          errors: [
-            {
-              type: 'runtime',
-              message: msg.error.message,
-              line: null,
-              column: null,
-            },
-          ],
-          warnings: [],
-          executionTimeMs: 0,
-        });
+        const compileErrReq = pending.get(msg.requestId);
+        if (compileErrReq?.type === 'compile') {
+          compileErrReq.resolve({
+            gltfBase64: '',
+            parts: [],
+            errors: [
+              {
+                type: 'runtime',
+                message: msg.error.message,
+                line: null,
+                column: null,
+              },
+            ],
+            warnings: [],
+            executionTimeMs: 0,
+          });
+        }
         pending.delete(msg.requestId);
         break;
+      }
+
+      case 'export-result': {
+        console.log(`[Engine] Export result received: ${msg.filename}`);
+        const exportReq = pending.get(msg.requestId);
+        if (exportReq?.type === 'export') {
+          exportReq.resolve({ data: msg.data, filename: msg.filename });
+        }
+        pending.delete(msg.requestId);
+        break;
+      }
+
+      case 'export-error': {
+        console.error(`[Engine] Export error: ${msg.error.message}`);
+        const exportErrReq = pending.get(msg.requestId);
+        if (exportErrReq?.type === 'export') {
+          exportErrReq.resolve({
+            data: new ArrayBuffer(0),
+            filename: '',
+            error: msg.error.message,
+          });
+        }
+        pending.delete(msg.requestId);
+        break;
+      }
     }
   };
 
@@ -93,13 +133,17 @@ export function createWorkerEngine(): CadEngine {
 
   function failPendingRequests(message: string): void {
     for (const [id, req] of pending) {
-      req.resolve({
-        gltfBase64: '',
-        parts: [],
-        errors: [{ type: 'runtime', message, line: null, column: null }],
-        warnings: [],
-        executionTimeMs: 0,
-      });
+      if (req.type === 'compile') {
+        req.resolve({
+          gltfBase64: '',
+          parts: [],
+          errors: [{ type: 'runtime', message, line: null, column: null }],
+          warnings: [],
+          executionTimeMs: 0,
+        });
+      } else {
+        req.resolve({ data: new ArrayBuffer(0), filename: '', error: message });
+      }
       pending.delete(id);
     }
   }
@@ -142,8 +186,17 @@ export function createWorkerEngine(): CadEngine {
       const requestId = crypto.randomUUID();
       console.log(`[Engine] Requesting compile (quality=${quality}, ${code.length} chars)`);
       return new Promise<CompileResult>((resolve) => {
-        pending.set(requestId, { resolve });
+        pending.set(requestId, { type: 'compile', resolve });
         worker.postMessage({ type: 'compile', requestId, code, quality });
+      });
+    },
+
+    exportModel(code: string, format: ExportFormat): Promise<ExportResult> {
+      const requestId = crypto.randomUUID();
+      console.log(`[Engine] Requesting export (format=${format})`);
+      return new Promise<ExportResult>((resolve) => {
+        pending.set(requestId, { type: 'export', resolve });
+        worker.postMessage({ type: 'export', requestId, code, format });
       });
     },
 

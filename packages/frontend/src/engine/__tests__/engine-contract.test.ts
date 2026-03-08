@@ -48,6 +48,10 @@ function createMockEngine(options?: {
       return options?.compileResult ?? defaultResult;
     },
 
+    async exportModel() {
+      return { data: new ArrayBuffer(0), filename: 'test.stl' };
+    },
+
     cancelCompile() { /* noop in test */ },
     retry() {
       // Re-emit init phases on retry
