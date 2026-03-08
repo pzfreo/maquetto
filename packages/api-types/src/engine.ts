@@ -69,6 +69,16 @@ export interface CompileResult {
   readonly executionTimeMs: number;
 }
 
+// --- Export ---
+
+export type ExportFormat = 'stl' | 'step';
+
+export interface ExportResult {
+  readonly data: ArrayBuffer;
+  readonly filename: string;
+  readonly error?: string;
+}
+
 // --- CadEngine Interface ---
 
 export interface CadEngine {
@@ -77,6 +87,9 @@ export interface CadEngine {
 
   /** Compile Build123d code and return geometry + metadata. Errors are data, never thrown. */
   compile(code: string, quality: QualityLevel): Promise<CompileResult>;
+
+  /** Export the current model to STL or STEP format. */
+  exportModel(code: string, format: ExportFormat): Promise<ExportResult>;
 
   /** Cancel current compilation. Terminates the worker and restarts automatically. */
   cancelCompile(): void;

@@ -1,4 +1,4 @@
-import type { CompileResult, EngineError, EngineStatus, QualityLevel } from './engine';
+import type { CompileResult, EngineError, EngineStatus, ExportFormat, QualityLevel } from './engine';
 
 // --- Main thread → Worker ---
 
@@ -9,6 +9,12 @@ export type WorkerRequest =
       readonly requestId: string;
       readonly code: string;
       readonly quality: QualityLevel;
+    }
+  | {
+      readonly type: 'export';
+      readonly requestId: string;
+      readonly code: string;
+      readonly format: ExportFormat;
     };
 
 // --- Worker → Main thread ---
@@ -22,6 +28,17 @@ export type WorkerResponse =
     }
   | {
       readonly type: 'compile-error';
+      readonly requestId: string;
+      readonly error: EngineError;
+    }
+  | {
+      readonly type: 'export-result';
+      readonly requestId: string;
+      readonly data: ArrayBuffer;
+      readonly filename: string;
+    }
+  | {
+      readonly type: 'export-error';
       readonly requestId: string;
       readonly error: EngineError;
     };

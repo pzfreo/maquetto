@@ -123,6 +123,29 @@ export interface VersionHistorySlice {
   clearVersionHistory: () => void;
 }
 
+// --- Project Slice ---
+
+export interface Project {
+  readonly id: string;
+  readonly userId: string;
+  readonly title: string;
+  readonly code: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface ProjectSlice {
+  readonly currentProject: Project | null;
+  readonly projectList: ReadonlyArray<Project>;
+  readonly projectLoading: boolean;
+  readonly projectSaving: boolean;
+  setCurrentProject: (project: Project | null) => void;
+  setProjectList: (projects: ReadonlyArray<Project>) => void;
+  setProjectLoading: (loading: boolean) => void;
+  setProjectSaving: (saving: boolean) => void;
+  updateProjectTitle: (title: string) => void;
+}
+
 // --- Combined Store ---
 
 export type AppStore = AuthSlice &
@@ -131,4 +154,5 @@ export type AppStore = AuthSlice &
   CompilationSlice &
   ViewportSlice &
   SettingsSlice &
-  VersionHistorySlice;
+  VersionHistorySlice &
+  ProjectSlice;

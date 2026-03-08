@@ -7,6 +7,7 @@ import { createCompilationSlice } from './compilation-slice';
 import { createViewportSlice } from './viewport-slice';
 import { createSettingsSlice } from './settings-slice';
 import { createVersionHistorySlice } from './version-history-slice';
+import { createProjectSlice } from './project-slice';
 
 export const useAppStore = create<AppStore>()((...args) => ({
   ...createAuthSlice(...args),
@@ -16,4 +17,5 @@ export const useAppStore = create<AppStore>()((...args) => ({
   ...createViewportSlice(...args),
   ...createSettingsSlice(...args),
   ...createVersionHistorySlice(...args),
+  ...createProjectSlice(...args),
 }));
