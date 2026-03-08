@@ -30,20 +30,38 @@ function captureViewportScreenshot(): Promise<string | null> {
   });
 }
 
-export function createTestCodeTool(compileFn: CompileFn) {
+/**
+ * Creates the test_code tool. Always registers the tool so the model can
+ * see it, but returns a clear error when the CAD engine isn't ready yet.
+ * This prevents the model from hallucinating text-based tool call markup
+ * when the system prompt mentions test_code but the tool isn't registered.
+ */
+export function createTestCodeTool(compileFn: CompileFn | null) {
   const inputSchema = z.object({
     code: z.string().describe('Complete Build123d Python code to test'),
   });
 
-  // Build tool config with experimental_toToolResultContent for image support.
-  // The `as any` is needed because the Vercel AI SDK tool() overload doesn't
-  // expose experimental_toToolResultContent in its public type signature yet.
+  // The `as any` cast is needed because the Vercel AI SDK tool() overloads
+  // can't resolve the complex union return type of execute(). The tool()
+  // function is a pass-through (literally `return tool2`), so this is safe.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const config: any = {
     description:
       'MANDATORY: Test Build123d Python code by compiling it in the CAD engine. You MUST call this tool before presenting ANY code to the user. Returns compilation errors (fix and retry) or success with part count and a viewport screenshot showing the rendered result.',
     inputSchema,
     execute: async ({ code }: z.infer<typeof inputSchema>) => {
+      if (!compileFn) {
+        console.log('[test_code] Engine not ready, returning error');
+        return {
+          success: false as const,
+          errors: [{
+            type: 'engine' as const,
+            message: 'The CAD engine is still loading. Please wait a moment and try again.',
+            line: null,
+          }],
+        };
+      }
+
       console.log('[test_code] Testing code...', code.length, 'chars');
       try {
         const result = await compileFn(code);
@@ -80,24 +98,6 @@ export function createTestCodeTool(compileFn: CompileFn) {
           errors: [{ type: 'runtime' as const, message: String(err), line: null }],
         };
       }
-    },
-    // Return screenshot as an image content part so the model can actually see it
-    experimental_toToolResultContent(result: Record<string, unknown>) {
-      const parts: Array<
-        { type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string }
-      > = [];
-
-      // Always include the structured result as text (without the huge data URL)
-      const { viewportScreenshot, ...rest } = result;
-      parts.push({ type: 'text', text: JSON.stringify(rest) });
-
-      // If there's a screenshot, include it as an image content part
-      if (typeof viewportScreenshot === 'string' && viewportScreenshot.startsWith('data:image/png;base64,')) {
-        const base64 = viewportScreenshot.replace('data:image/png;base64,', '');
-        parts.push({ type: 'image', data: base64, mimeType: 'image/png' });
-      }
-
-      return parts;
     },
   };
 

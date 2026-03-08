@@ -20,9 +20,7 @@ export function createGoogleTransport(
 
   const google = createGoogleGenerativeAI({ apiKey: credential });
 
-  const tools = compileFn
-    ? { test_code: createTestCodeTool(compileFn) }
-    : undefined;
+  const tools = { test_code: createTestCodeTool(compileFn) };
 
   // Track whether the last test_code call failed so we can force a retry
   let lastTestFailed = true;
@@ -30,17 +28,15 @@ export function createGoogleTransport(
   const agent = new ToolLoopAgent({
     model: google(resolvedModel),
     instructions: systemPrompt,
-    ...(tools && { tools }),
+    tools,
     stopWhen: stepCountIs(6),
     // Force tool use on step 0 (initial test) and whenever the previous
     // test_code call returned errors, so the AI must fix and retry rather
     // than presenting broken code.
-    ...(tools && {
-      prepareStep({ stepNumber }: { stepNumber: number }) {
-        const force = stepNumber === 0 || lastTestFailed;
-        return { toolChoice: force ? ('required' as const) : ('auto' as const) };
-      },
-    }),
+    prepareStep({ stepNumber }: { stepNumber: number }) {
+      const force = stepNumber === 0 || lastTestFailed;
+      return { toolChoice: force ? ('required' as const) : ('auto' as const) };
+    },
     onStepFinish({ stepNumber, finishReason, toolCalls, toolResults }) {
       console.log(`[Google] Step ${stepNumber} finished: reason=${finishReason}, toolCalls=${toolCalls.length}, toolResults=${toolResults.length}`);
       for (const r of toolResults) {

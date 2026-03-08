@@ -41,8 +41,9 @@ export function useCADChat(engine: CadEngine | null) {
     return engineRef.current.compile(codeToTest, 'normal');
   }, []);
 
-  // Include engine truthiness so the transport is recreated once the engine
-  // loads (otherwise compileFn is passed as null and test_code tool is missing).
+  // The tool is always registered (returns "engine not ready" error if
+  // compileFn can't run yet). Recreate when the engine loads so the tool's
+  // closure captures the live compileFn.
   const engineReady = !!engine;
   const transport = useMemo(
     () => createTransport(aiProvider, engineReady ? compileFn : null, customSystemPrompt),
