@@ -54,6 +54,39 @@ export class DataUrlSafeChatTransport {
       tools: this.agent.tools,
     });
 
+    // Limit message history to avoid exceeding context window.
+    // Keep the last MAX_MESSAGES messages. This is a simple truncation —
+    // the system prompt provides all needed context via the latest message.
+    const MAX_MESSAGES = 40;
+    if (modelMessages.length > MAX_MESSAGES) {
+      modelMessages.splice(0, modelMessages.length - MAX_MESSAGES);
+    }
+
+    // Strip duplicated context from older user messages. Each user message
+    // has a `\n\n---\n` suffix with full code + part metadata. Keeping all
+    // of them duplicates context across the history and blows up token count.
+    // Only the last user message needs the full context.
+    const CONTEXT_SEP = '\n\n---\n';
+    let lastUserIdx = -1;
+    for (let i = modelMessages.length - 1; i >= 0; i--) {
+      if (modelMessages[i]!.role === 'user') { lastUserIdx = i; break; }
+    }
+    for (let i = 0; i < modelMessages.length; i++) {
+      const msg = modelMessages[i]!;
+      if (msg.role !== 'user' || i === lastUserIdx) continue;
+      if (typeof msg.content === 'string') {
+        const sepIdx = msg.content.indexOf(CONTEXT_SEP);
+        if (sepIdx !== -1) msg.content = msg.content.substring(0, sepIdx);
+      } else if (Array.isArray(msg.content)) {
+        for (const part of msg.content) {
+          if (part.type === 'text' && typeof part.text === 'string') {
+            const sepIdx = part.text.indexOf(CONTEXT_SEP);
+            if (sepIdx !== -1) part.text = part.text.substring(0, sepIdx);
+          }
+        }
+      }
+    }
+
     // Convert data-URL strings to Uint8Arrays so the SDK's download
     // pipeline skips them (it only downloads URL instances).
     for (const msg of modelMessages) {
