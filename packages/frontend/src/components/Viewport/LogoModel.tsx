@@ -9,9 +9,11 @@ import * as THREE from 'three';
 export function LogoModel() {
   const groupRef = useRef<THREE.Group>(null);
 
-  useFrame((_, delta) => {
+  // Use absolute clock time so rotation is always smooth and deterministic,
+  // even if the component re-renders or frames are dropped.
+  useFrame(({ clock }) => {
     if (groupRef.current) {
-      groupRef.current.rotation.y += delta * 0.3;
+      groupRef.current.rotation.y = clock.getElapsedTime() * 0.3;
     }
   });
 
