@@ -20,9 +20,20 @@ export function createGoogleTransport(
   const resolvedModel = modelId || 'gemini-3-flash-preview';
   console.log(`[Google] Initializing Gemini transport (model: ${resolvedModel}, oauth: ${!!useOAuth})`);
 
-  // OAuth tokens must be sent as Bearer header; API keys go as ?key= query param
+  // OAuth tokens must be sent as Bearer header; API keys go as ?key= query param.
+  // The SDK always appends ?key= to the URL, so for OAuth we use a custom fetch
+  // that strips the key param and adds the Authorization header instead.
   const google = useOAuth
-    ? createGoogleGenerativeAI({ apiKey: 'unused', headers: { Authorization: `Bearer ${credential}` } })
+    ? createGoogleGenerativeAI({
+        apiKey: 'oauth',
+        fetch: (url, init) => {
+          const u = new URL(typeof url === 'string' ? url : (url as Request).url);
+          u.searchParams.delete('key');
+          const headers = new Headers(init?.headers);
+          headers.set('Authorization', `Bearer ${credential}`);
+          return fetch(u.toString(), { ...init, headers });
+        },
+      })
     : createGoogleGenerativeAI({ apiKey: credential });
 
   const tools = { test_code: createTestCodeTool(compileFn) };
