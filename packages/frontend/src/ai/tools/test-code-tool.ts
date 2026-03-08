@@ -6,34 +6,15 @@ import { useAppStore } from '../../store';
 export type CompileFn = (code: string) => Promise<CompileResult>;
 
 /**
- * Wait for the viewport to render the new model, then capture via the
- * store-registered screenshot function (provided by ScreenshotRegistrar
- * inside the R3F Canvas).
- */
-function captureViewportScreenshot(): Promise<string | null> {
-  return new Promise((resolve) => {
-    // Wait 500ms for the glTF to load into the scene, then capture after a frame
-    setTimeout(() => {
-      requestAnimationFrame(() => {
-        const capture = useAppStore.getState().captureScreenshot;
-        if (capture) {
-          const dataUrl = capture();
-          if (dataUrl) {
-            console.log('[test_code] Captured viewport screenshot');
-            resolve(dataUrl);
-            return;
-          }
-        }
-        resolve(null);
-      });
-    }, 500);
-  });
-}
-
-/**
  * Creates the test_code tool. The compileFn uses a ref internally so it's
  * always up to date — if the engine isn't ready it throws, which the
  * try/catch handles gracefully.
+ *
+ * Note: Screenshots are NOT included in tool results to avoid blowing up
+ * the token count. A single base64 PNG screenshot is ~25K tokens, and with
+ * multiple tool calls per conversation this quickly exceeds context limits.
+ * The AI gets part count/metadata instead, and the user can attach a
+ * screenshot manually via "+ Screenshot" if needed.
  */
 export function createTestCodeTool(compileFn: CompileFn) {
   const inputSchema = z.object({
@@ -46,7 +27,7 @@ export function createTestCodeTool(compileFn: CompileFn) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const config: any = {
     description:
-      'MANDATORY: Test Build123d Python code by compiling it in the CAD engine. You MUST call this tool before presenting ANY code to the user. Returns compilation errors (fix and retry) or success with part count and a viewport screenshot showing the rendered result.',
+      'MANDATORY: Test Build123d Python code by compiling it in the CAD engine. You MUST call this tool before presenting ANY code to the user. Returns compilation errors (fix and retry) or success with part count.',
     inputSchema,
     execute: async ({ code }: z.infer<typeof inputSchema>) => {
       console.log('[test_code] Testing code...', code.length, 'chars');
@@ -65,18 +46,13 @@ export function createTestCodeTool(compileFn: CompileFn) {
         }
         console.log('[test_code] Success:', result.parts.length, 'parts');
 
-        // Push the result into the store so the viewport actually renders
-        // the new model before we capture the screenshot
+        // Push the result into the store so the viewport renders the new model
         useAppStore.getState().setCompileResult(result);
-
-        // Capture the viewport after the store update propagates to Three.js
-        const screenshot = await captureViewportScreenshot();
 
         return {
           success: true as const,
           partCount: result.parts.length,
           warnings: result.warnings,
-          ...(screenshot && { viewportScreenshot: screenshot }),
         };
       } catch (err) {
         console.error('[test_code] Compile threw:', err);
