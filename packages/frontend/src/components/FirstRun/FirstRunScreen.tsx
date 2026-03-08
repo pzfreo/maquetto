@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAppStore } from '../../store';
 import { signInWithGoogle, signInWithGoogleAI } from '../../lib/auth-actions';
+import { setPendingGoogleAI } from '../../hooks/useAuthListener';
 
 const FIRST_RUN_KEY = 'maquetto:first-run-complete';
 
@@ -25,26 +26,18 @@ interface FirstRunScreenProps {
 
 export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
   const setAIProvider = useAppStore((s) => s.setAIProvider);
-  const providerToken = useAppStore((s) => s.providerToken);
   const [anthropicKey, setAnthropicKey] = useState('');
   const [showClaudeFlow, setShowClaudeFlow] = useState(false);
   const [connectingGemini, setConnectingGemini] = useState(false);
   const [signingInForClaude, setSigningInForClaude] = useState(false);
 
-  // Auto-connect AI provider when Google AI OAuth completes
-  useEffect(() => {
-    if (connectingGemini && providerToken) {
-      setAIProvider({ type: 'google-oauth', credential: providerToken });
-      setConnectingGemini(false);
-      completeFirstRun();
-      onComplete();
-    }
-  }, [connectingGemini, providerToken, setAIProvider, onComplete]);
-
   const handleGoogleGemini = async () => {
     setConnectingGemini(true);
     try {
+      // Set flag so auth listener auto-configures AI when token arrives
+      setPendingGoogleAI();
       await signInWithGoogleAI();
+      completeFirstRun();
     } catch {
       setConnectingGemini(false);
     }
