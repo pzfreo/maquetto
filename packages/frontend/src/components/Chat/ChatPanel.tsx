@@ -8,17 +8,33 @@ import { extractSummary } from '../../ai/extract-summary';
 import type { CadEngine } from '@maquetto/api-types';
 
 /**
+ * Strip tool-call markup that some models emit as plain text
+ * instead of using structured tool calling.
+ */
+const TOOL_CALL_RE = /<\|tool_call_start\|>[\s\S]*?<\|tool_call_end\|>/g;
+const TOOL_RESPONSE_RE = /<\|tool_call_response_start\|>[\s\S]*?<\|tool_call_response_end\|>/g;
+
+function stripToolMarkup(text: string): string {
+  return text
+    .replace(TOOL_CALL_RE, '')
+    .replace(TOOL_RESPONSE_RE, '')
+    .replace(/\n{3,}/g, '\n\n') // collapse excess newlines left behind
+    .trim();
+}
+
+/**
  * Extract text content from a UIMessage's parts array.
- * Filters out file/image parts and any text that looks like base64 image data.
+ * Filters out file/image parts, base64 image data, and tool-call markup.
  */
 function getMessageText(parts: ReadonlyArray<{ type: string; text?: string }>): string {
-  return parts
+  const raw = parts
     .filter((p): p is { type: 'text'; text: string } =>
       p.type === 'text' && typeof p.text === 'string'
       && !p.text.startsWith('data:image/')
     )
     .map((p) => p.text)
     .join('');
+  return stripToolMarkup(raw);
 }
 
 /** Check if a UIMessage's parts contain any file/image attachments */
