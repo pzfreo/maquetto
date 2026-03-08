@@ -46,6 +46,18 @@ const PYODIDE_CDN = 'https://cdn.jsdelivr.net/pyodide/v0.29.0/full/';
 
 let pyodide: PyodideInterface | null = null;
 
+// --- Security: block network APIs in worker scope ---
+// User Python code could access these via Pyodide's js module bridge
+// (which we also block), but defense-in-depth: remove them from the
+// worker global so even if the import block is bypassed, no network.
+const _originalFetch = self.fetch; // keep for internal use if needed
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(self as any).fetch = undefined;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(self as any).XMLHttpRequest = undefined;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(self as any).WebSocket = undefined;
+
 function postStatus(phase: EnginePhase, progress: number): void {
   const msg: WorkerResponse = {
     type: 'status',
@@ -282,9 +294,24 @@ def _execute_and_export(code_str, quality_level):
     start_time = time.time()
 
     # Prepare namespace with build123d pre-imported
+    # Block access to js/pyodide modules to prevent JavaScript interop exploits
+    import builtins as _builtins_mod
+    _original_import = _builtins_mod.__import__
+    _BLOCKED_MODULES = frozenset({
+        'js', 'pyodide', 'pyodide_js', 'pyodide_js._api',
+        'pyodide.http', 'pyodide.ffi', 'pyodide.code',
+    })
+    def _safe_import(name, *args, **kwargs):
+        if name in _BLOCKED_MODULES or name.startswith('pyodide.'):
+            raise ImportError(f"Module '{name}' is not available in the CAD sandbox")
+        return _original_import(name, *args, **kwargs)
+
     namespace = {'__builtins__': __builtins__}
     exec('from build123d import *', namespace)
     exec('import numpy', namespace)
+    # Install the safe import into the user namespace
+    namespace['__builtins__'] = dict(vars(_builtins_mod))
+    namespace['__builtins__']['__import__'] = _safe_import
 
     # Snapshot namespace keys before user code so we only scan user-created variables
     pre_exec_names = set(namespace.keys())

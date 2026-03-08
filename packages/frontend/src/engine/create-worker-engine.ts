@@ -147,6 +147,23 @@ export function createWorkerEngine(): CadEngine {
       });
     },
 
+    cancelCompile(): void {
+      if (disposed || pending.size === 0) return;
+      console.log('[Engine] Cancelling compilation — terminating and restarting worker...');
+      // Fail all pending requests with cancellation error
+      failPendingRequests('Compilation cancelled by user');
+      // Terminate and restart
+      worker.terminate();
+      worker = createWorker();
+      wireWorker(worker, listeners, pending, handleCrash);
+      // Notify UI that engine is reloading
+      notifyListeners({ phase: 'loading-pyodide', progress: 0 });
+      worker.postMessage({
+        type: 'init',
+        requestId: crypto.randomUUID(),
+      });
+    },
+
     retry(): void {
       if (disposed) return;
       console.log('[Engine] Restarting with fresh worker...');

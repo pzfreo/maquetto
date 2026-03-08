@@ -33,6 +33,10 @@ export function App() {
     engine?.retry();
   }, [engine]);
 
+  const handleStop = useCallback(() => {
+    engine?.cancelCompile();
+  }, [engine]);
+
   if (showFirstRun && !firstRunDismissed) {
     console.log('[App] Showing first-run setup');
     return <FirstRunScreen onComplete={() => {
@@ -42,6 +46,6 @@ export function App() {
   }
 
   return (
-    <Layout onCompile={triggerCompile} onRetryEngine={handleRetryEngine} engine={engine} />
+    <Layout onCompile={triggerCompile} onStop={handleStop} onRetryEngine={handleRetryEngine} engine={engine} />
   );
 }

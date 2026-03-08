@@ -78,6 +78,9 @@ export interface CadEngine {
   /** Compile Build123d code and return geometry + metadata. Errors are data, never thrown. */
   compile(code: string, quality: QualityLevel): Promise<CompileResult>;
 
+  /** Cancel current compilation. Terminates the worker and restarts automatically. */
+  cancelCompile(): void;
+
   /** Retry initialization after an error. */
   retry(): void;
 

@@ -1,16 +1,45 @@
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, memo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { useAppStore } from '../../store';
 
 /**
- * 3D version of the Maquetto logo — an isometric cube with "M" and ">_".
- * Shown in the viewport while the CAD engine loads.
+ * Loading label shown below the spinning cube.
+ * Separated into its own component so engine status updates
+ * don't cause the 3D cube to re-render (which causes glitches).
  */
-export function LogoModel() {
+function LoadingLabel() {
+  const phase = useAppStore((s) => s.engineStatus.phase);
+  const progress = useAppStore((s) => s.engineStatus.progress);
+
+  if (phase === 'ready') return null;
+
+  const label = phase === 'error'
+    ? 'Engine failed to load'
+    : `Loading${progress > 0 ? ` (${progress}%)` : '...'}`;
+
+  return (
+    <Html center position={[0, -30, 0]} zIndexRange={[1, 0]}>
+      <div style={{
+        color: '#8888aa',
+        fontSize: '14px',
+        fontFamily: 'system-ui, sans-serif',
+        whiteSpace: 'nowrap',
+        userSelect: 'none',
+      }}>
+        {label}
+      </div>
+    </Html>
+  );
+}
+
+/**
+ * 3D spinning cube — pure Three.js objects, no store subscriptions.
+ * Memoized so it never re-renders from parent state changes.
+ */
+const SpinningCube = memo(function SpinningCube() {
   const groupRef = useRef<THREE.Group>(null);
-  const engineStatus = useAppStore((s) => s.engineStatus);
 
   useFrame((_, delta) => {
     if (groupRef.current) {
@@ -74,9 +103,9 @@ export function LogoModel() {
         [s * 0.4, -s * 0.6, s + 0.1],
       ], blue, 0.8),
       chevronLine: makeLineObj([
-        [s + 0.1, s * 0.3, s * 0.3],   // top-left of ">"
-        [s + 0.1, 0, -s * 0.1],         // middle-right point
-        [s + 0.1, -s * 0.3, s * 0.3],   // bottom-left of ">"
+        [s + 0.1, s * 0.3, s * 0.3],
+        [s + 0.1, 0, -s * 0.1],
+        [s + 0.1, -s * 0.3, s * 0.3],
       ], purple, 0.8),
       cursorLine: makeLineObj([
         [s + 0.1, -s * 0.5, -s * 0.1], [s + 0.1, -s * 0.5, -s * 0.5],
@@ -84,35 +113,29 @@ export function LogoModel() {
     };
   }, []);
 
-  const loadingLabel = engineStatus.phase === 'ready' ? null : (
-    engineStatus.phase === 'error' ? 'Engine failed to load' :
-    `Loading${engineStatus.progress > 0 ? ` (${engineStatus.progress}%)` : '...'}`
+  return (
+    <group ref={groupRef}>
+      {faces.map((f, i) => (
+        <mesh key={i} geometry={f.geo} material={f.mat} />
+      ))}
+      <lineSegments geometry={edgesGeo} material={edgeMat} />
+      <primitive object={mLine} />
+      <primitive object={chevronLine} />
+      <primitive object={cursorLine} />
+    </group>
   );
+});
 
+/**
+ * Logo shown in viewport while engine loads.
+ * SpinningCube is memoized and never re-renders.
+ * LoadingLabel subscribes to engine status independently.
+ */
+export function LogoModel() {
   return (
     <>
-      <group ref={groupRef}>
-        {faces.map((f, i) => (
-          <mesh key={i} geometry={f.geo} material={f.mat} />
-        ))}
-        <lineSegments geometry={edgesGeo} material={edgeMat} />
-        <primitive object={mLine} />
-        <primitive object={chevronLine} />
-        <primitive object={cursorLine} />
-      </group>
-      {loadingLabel && (
-        <Html center position={[0, -30, 0]} zIndexRange={[1, 0]}>
-          <div style={{
-            color: '#8888aa',
-            fontSize: '14px',
-            fontFamily: 'system-ui, sans-serif',
-            whiteSpace: 'nowrap',
-            userSelect: 'none',
-          }}>
-            {loadingLabel}
-          </div>
-        </Html>
-      )}
+      <SpinningCube />
+      <LoadingLabel />
     </>
   );
 }
