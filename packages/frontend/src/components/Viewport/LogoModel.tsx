@@ -1,44 +1,12 @@
-import { useRef, useMemo, memo } from 'react';
+import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Html } from '@react-three/drei';
 import * as THREE from 'three';
-import { useAppStore } from '../../store';
 
 /**
- * Loading label shown below the spinning cube.
- * Separated into its own component so engine status updates
- * don't cause the 3D cube to re-render (which causes glitches).
+ * 3D spinning cube logo shown in the viewport while the CAD engine loads.
+ * Pure Three.js — no store subscriptions, no drei Html, no React re-renders.
  */
-function LoadingLabel() {
-  const phase = useAppStore((s) => s.engineStatus.phase);
-  const progress = useAppStore((s) => s.engineStatus.progress);
-
-  if (phase === 'ready') return null;
-
-  const label = phase === 'error'
-    ? 'Engine failed to load'
-    : `Loading${progress > 0 ? ` (${progress}%)` : '...'}`;
-
-  return (
-    <Html center position={[0, -30, 0]} zIndexRange={[1, 0]}>
-      <div style={{
-        color: '#8888aa',
-        fontSize: '14px',
-        fontFamily: 'system-ui, sans-serif',
-        whiteSpace: 'nowrap',
-        userSelect: 'none',
-      }}>
-        {label}
-      </div>
-    </Html>
-  );
-}
-
-/**
- * 3D spinning cube — pure Three.js objects, no store subscriptions.
- * Memoized so it never re-renders from parent state changes.
- */
-const SpinningCube = memo(function SpinningCube() {
+export function LogoModel() {
   const groupRef = useRef<THREE.Group>(null);
 
   useFrame((_, delta) => {
@@ -123,19 +91,5 @@ const SpinningCube = memo(function SpinningCube() {
       <primitive object={chevronLine} />
       <primitive object={cursorLine} />
     </group>
-  );
-});
-
-/**
- * Logo shown in viewport while engine loads.
- * SpinningCube is memoized and never re-renders.
- * LoadingLabel subscribes to engine status independently.
- */
-export function LogoModel() {
-  return (
-    <>
-      <SpinningCube />
-      <LoadingLabel />
-    </>
   );
 }
