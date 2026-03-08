@@ -8,21 +8,41 @@ import { DataUrlSafeChatTransport } from './data-url-safe-transport';
  * Google's Generative AI API supports CORS, so no proxy needed.
  *
  * @param credential - A Gemini API key (BYOK) or OAuth access token.
- *   Both are passed as apiKey — Google's generativelanguage.googleapis.com
- *   accepts OAuth tokens via the ?key= parameter (same as API keys).
+ * @param useOAuth - If true, send credential as Bearer token instead of API key.
  */
 export function createGoogleTransport(
   credential: string,
   systemPrompt: string,
   compileFn: CompileFn,
   modelId?: string,
+  useOAuth?: boolean,
 ) {
   const resolvedModel = modelId || 'gemini-3-flash-preview';
-  console.log(`[Google] Initializing Gemini transport (model: ${resolvedModel})`);
+  console.log(`[Google] Initializing Gemini transport (model: ${resolvedModel}, oauth: ${!!useOAuth})`);
 
-  // Both API keys and OAuth access tokens work via ?key= on the
-  // generativelanguage.googleapis.com endpoint (which has CORS support).
-  const google = createGoogleGenerativeAI({ apiKey: credential });
+  // For BYOK: pass API key directly (SDK sends it as ?key= or x-goog-api-key header).
+  // For OAuth: use custom fetch to replace API key auth with Bearer token.
+  // The SDK requires apiKey, so we provide a placeholder for OAuth and swap in
+  // the Authorization header via custom fetch.
+  const google = useOAuth
+    ? createGoogleGenerativeAI({
+        apiKey: 'oauth-placeholder',
+        fetch: async (input, init) => {
+          const url = new URL(typeof input === 'string' ? input : (input as Request).url);
+          // Strip the placeholder API key from URL
+          url.searchParams.delete('key');
+          const headers = new Headers(init?.headers);
+          // Remove any API key header the SDK added
+          headers.delete('x-goog-api-key');
+          // Set OAuth Bearer token
+          headers.set('Authorization', `Bearer ${credential}`);
+          console.log(`[Google OAuth] ${init?.method ?? 'GET'} ${url.pathname}`);
+          const response = await globalThis.fetch(url.toString(), { ...init, headers });
+          console.log(`[Google OAuth] Response: ${response.status} ${response.statusText}`);
+          return response;
+        },
+      })
+    : createGoogleGenerativeAI({ apiKey: credential });
 
   const tools = { test_code: createTestCodeTool(compileFn) };
 
