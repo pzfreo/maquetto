@@ -13,7 +13,7 @@ import { DataUrlSafeChatTransport } from './data-url-safe-transport';
 export function createAnthropicTransport(
   credential: string,
   systemPrompt: string,
-  compileFn: CompileFn | null,
+  compileFn: CompileFn,
   modelId?: string,
 ) {
   const resolvedModel = modelId || 'claude-sonnet-4-20250514';

@@ -10,7 +10,7 @@ import type { CompileFn } from './tools/test-code-tool';
  */
 export function createTransport(
   config: AIProviderConfig,
-  compileFn: CompileFn | null,
+  compileFn: CompileFn,
   customSystemPrompt?: string | null,
 ) {
   if (config.type === 'none' || !config.credential) {

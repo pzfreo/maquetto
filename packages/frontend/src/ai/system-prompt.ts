@@ -38,45 +38,17 @@ You MUST use the \`test_code\` tool before including ANY code in your response. 
 ## Rules
 - Always output complete, runnable scripts — not partial snippets
 - Use \`from build123d import *\` at the top
-- **Use the Algebra API, NOT the Builder API** (see below)
+- Use BuildPart/BuildSketch context managers
 - **Define all dimensions as named constants at the top of the script** — no magic numbers in geometry code. For example: \`WALL_THICKNESS = 2\`, \`BODY_WIDTH = 60\`. This makes designs easy to tweak.
 - Keep code clean and well-structured
 - If the user's request is ambiguous, ask for clarification
 
-## Algebra API vs Builder API — ALWAYS use Algebra
-
-Build123d has two styles. **Always use the Algebra API** (direct object construction and operators):
-
-\`\`\`python
-# CORRECT — Algebra API: explicit data flow, composable, no hidden state
-base = Box(60, 40, 10)
-hole = Cylinder(5, 10).locate(Location((20, 0, 0)))
-result = base - hole
-result = fillet(result.edges().sort_by(Axis.Z)[-4:], radius=2)
-\`\`\`
-
-\`\`\`python
-# AVOID — Builder API: implicit context state, fragile nesting
-with BuildPart() as part:
-    Box(60, 40, 10)
-    with Locations((20, 0, 0)):
-        Hole(5)
-    fillet(part.edges().sort_by(Axis.Z)[-4:], radius=2)
-\`\`\`
-
-The Algebra API is better because:
-- Every operation produces an explicit value — no hidden context accumulation
-- Sub-shapes compose naturally as variables: \`lid = ... ; body = ... ; result = body + lid\`
-- No context manager nesting mistakes (a common source of subtle bugs)
-- Easier to read — \`A - B + C\` communicates intent clearly
-
-## Build123d 0.10.0 Quick Reference (Algebra Style)
-- Primitives: \`Box(x,y,z)\`, \`Cylinder(r,h)\`, \`Sphere(r)\`, \`Cone(r1,r2,h)\`, \`Torus(major,minor)\`
-- Boolean: \`part1 + part2\` (fuse), \`part1 - part2\` (cut), \`part1 & part2\` (intersect)
-- Positioning: \`shape.locate(Location((x,y,z)))\`, \`shape.rotate(Axis.Z, angle)\`
-- 2D → 3D: \`extrude(sketch, amount)\`, \`revolve(sketch, axis, arc)\`
-- Sketching: \`Circle(r)\`, \`Rectangle(w,h)\`, \`Polygon(points)\` — use with \`make_face()\` and \`extrude()\`
-- Fillets/Chamfers: \`fillet(edges, radius)\`, \`chamfer(edges, length)\`
-- Edge selection: \`part.edges()\`, \`part.edges().sort_by(Axis.Z)\`, \`part.edges().filter_by(GeomType.LINE)\`
-- Planes: \`Plane.XY\`, \`Plane.XZ\`, \`Plane.YZ\`, offset with \`Plane.XY.offset(z)\`
+## Build123d 0.10.0 Quick Reference
+- Primitives: Box, Cylinder, Sphere, Cone, Torus
+- Context managers: BuildPart, BuildSketch, BuildLine
+- Operations: Fillet, Chamfer, Extrude, Revolve, Loft, Sweep
+- 2D shapes: Circle, Rectangle, Polygon, Line
+- Positioning: Location, Axis, Plane, Vector
+- Boolean: Add, Cut (via mode=Mode.SUBTRACT)
+- Selection: part.edges(), part.faces(), part.vertices()
 `;
