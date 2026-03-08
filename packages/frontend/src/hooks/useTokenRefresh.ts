@@ -4,7 +4,11 @@ import { refreshGoogleToken } from '../lib/google-token-refresh';
 
 /** Refresh 5 minutes before expiry (Google tokens last 3600s) */
 const REFRESH_MARGIN_MS = 5 * 60 * 1000;
-const DEFAULT_EXPIRY_MS = 55 * 60 * 1000; // 55 minutes if we don't know the real expiry
+// On page load we don't know when the token was issued, so refresh
+// proactively after 5 minutes. If it's still valid, Google returns
+// a new one cheaply. This avoids the case where a user reloads the
+// page 50 minutes into the token's lifetime and then hits a 401.
+const INITIAL_REFRESH_MS = 5 * 60 * 1000;
 
 /**
  * Automatically refreshes the Google OAuth access token before it expires.
@@ -55,10 +59,9 @@ export function useTokenRefresh() {
       timerRef.current = setTimeout(() => void doRefresh(), ms);
     }
 
-    // Schedule the first refresh. Since we don't know when the token was issued,
-    // use a conservative default. The token might already be close to expiry
-    // if the user refreshed the page after some time.
-    scheduleRefresh(DEFAULT_EXPIRY_MS);
+    // Schedule the first refresh aggressively — we don't know when
+    // the token was issued, so refresh soon to avoid expired-token errors.
+    scheduleRefresh(INITIAL_REFRESH_MS);
 
     return () => {
       if (timerRef.current) {
