@@ -29,7 +29,7 @@ interface OAuthResult {
  * Process OAuth result from popup (implicit tokens or PKCE code).
  */
 async function handleOAuthResult(result: OAuthResult) {
-  const { setAuthUser, setAuthLoading, setProviderToken } = useAppStore.getState();
+  const { setAuthUser, setAuthLoading, setProviderToken, setProviderRefreshToken } = useAppStore.getState();
 
   if (result.access_token && result.refresh_token) {
     // Implicit flow — set session directly from tokens
@@ -46,6 +46,11 @@ async function handleOAuthResult(result: OAuthResult) {
       setAuthUser(extractAuthUser(data.session));
       // Use provider_token from the callback (setSession doesn't return it)
       setProviderToken(result.provider_token ?? data.session.provider_token ?? null);
+      // Capture provider refresh token for Google AI OAuth
+      if (result.provider_refresh_token) {
+        console.log('[Auth] Storing provider refresh token');
+        setProviderRefreshToken(result.provider_refresh_token);
+      }
     }
     setAuthLoading(false);
   } else if (result.code) {
@@ -59,6 +64,10 @@ async function handleOAuthResult(result: OAuthResult) {
     if (data.session) {
       setAuthUser(extractAuthUser(data.session));
       setProviderToken(data.session.provider_token ?? null);
+      if (data.session.provider_refresh_token) {
+        console.log('[Auth] Storing provider refresh token (PKCE)');
+        setProviderRefreshToken(data.session.provider_refresh_token);
+      }
     }
     setAuthLoading(false);
   }
@@ -70,7 +79,7 @@ async function handleOAuthResult(result: OAuthResult) {
  */
 export function useAuthListener() {
   useEffect(() => {
-    const { setAuthUser, setAuthLoading, setProviderToken } = useAppStore.getState();
+    const { setAuthUser, setAuthLoading, setProviderToken, setProviderRefreshToken } = useAppStore.getState();
     let exchanging = false;
 
     // Get initial session
@@ -79,6 +88,9 @@ export function useAuthListener() {
         console.log('[Auth] Existing session found');
         setAuthUser(extractAuthUser(session));
         setProviderToken(session.provider_token ?? null);
+        if (session.provider_refresh_token) {
+          setProviderRefreshToken(session.provider_refresh_token);
+        }
       }
       setAuthLoading(false);
     });
@@ -91,6 +103,9 @@ export function useAuthListener() {
           setAuthUser(extractAuthUser(session));
           if (session.provider_token) {
             setProviderToken(session.provider_token);
+          }
+          if (session.provider_refresh_token) {
+            setProviderRefreshToken(session.provider_refresh_token);
           }
         } else {
           setAuthUser(null);
@@ -146,6 +161,9 @@ export function useAuthListener() {
         if (session) {
           setAuthUser(extractAuthUser(session));
           setProviderToken(session.provider_token ?? null);
+          if (session.provider_refresh_token) {
+            setProviderRefreshToken(session.provider_refresh_token);
+          }
         }
         // Strip tokens from URL
         history.replaceState(null, '', window.location.pathname);

@@ -15,7 +15,7 @@ export function createGoogleTransport(
   compileFn: CompileFn,
   modelId?: string,
 ) {
-  const resolvedModel = modelId || 'gemini-2.0-flash';
+  const resolvedModel = modelId || 'gemini-3-flash-preview';
   console.log(`[Google] Initializing Gemini transport (model: ${resolvedModel})`);
 
   const google = createGoogleGenerativeAI({ apiKey: credential });

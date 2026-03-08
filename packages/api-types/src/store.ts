@@ -20,11 +20,14 @@ export interface AuthUser {
 export interface AuthSlice {
   readonly authUser: AuthUser | null;
   readonly authLoading: boolean;
-  /** Google OAuth provider_token for Gemini API access */
+  /** Google OAuth access token for Gemini API access */
   readonly providerToken: string | null;
+  /** Google OAuth refresh token for renewing expired access tokens */
+  readonly providerRefreshToken: string | null;
   setAuthUser: (user: AuthUser | null) => void;
   setAuthLoading: (loading: boolean) => void;
   setProviderToken: (token: string | null) => void;
+  setProviderRefreshToken: (token: string | null) => void;
   signOut: () => void;
 }
 

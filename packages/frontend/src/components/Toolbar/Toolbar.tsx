@@ -505,9 +505,9 @@ export function Toolbar({ onCompile, onStop, onRetryEngine, engine, onOpenProjec
                 padding: '3px 10px',
                 borderRadius: '4px',
                 border: '1px solid',
-                borderColor: aiProvider.type === 'google' ? '#4285f4' : '#d97706',
+                borderColor: aiProvider.type === 'anthropic' ? '#d97706' : '#4285f4',
                 background: 'transparent',
-                color: aiProvider.type === 'google' ? '#4285f4' : '#d97706',
+                color: aiProvider.type === 'anthropic' ? '#d97706' : '#4285f4',
                 fontSize: '11px',
                 cursor: 'pointer',
               }}

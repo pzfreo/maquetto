@@ -55,10 +55,18 @@ async function signInWithPopup(
 }
 
 export async function signInWithGoogle() {
-  // No extra scopes — Google sign-in is for auth only.
-  // Gemini API doesn't support OAuth tokens for generateContent,
-  // so AI uses BYOK API keys from aistudio.google.com.
   return signInWithPopup('google');
+}
+
+/**
+ * Sign in with Google AND request the Gemini API scope.
+ * The provider_token returned can be used as a credential for the Google AI transport.
+ */
+export async function signInWithGoogleAI() {
+  return signInWithPopup('google', {
+    scopes: 'https://www.googleapis.com/auth/generative-language.tuning',
+    queryParams: { access_type: 'offline', prompt: 'consent' },
+  });
 }
 
 export async function signInWithGitHub() {

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useEngine } from './hooks/useEngine';
 import { useCompilation } from './hooks/useCompilation';
 import { useAuthListener } from './hooks/useAuthListener';
+import { useTokenRefresh } from './hooks/useTokenRefresh';
 import { Layout } from './components/Layout/Layout';
 import {
   FirstRunScreen,
@@ -12,6 +13,7 @@ import './styles/global.css';
 
 export function App() {
   useAuthListener();
+  useTokenRefresh();
   const engine = useEngine();
   const { triggerCompile } = useCompilation(engine);
   const showFirstRun = useFirstRun();
