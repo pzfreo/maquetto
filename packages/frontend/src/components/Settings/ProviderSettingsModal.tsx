@@ -530,22 +530,46 @@ export function ProviderSettingsModal({
           )}
         </div>
 
-        {/* Close */}
-        <button
-          onClick={onClose}
-          style={{
-            width: '100%',
-            padding: '10px',
-            borderRadius: '6px',
-            border: '1px solid #444',
-            background: 'transparent',
-            color: '#888',
-            fontSize: '13px',
-            cursor: 'pointer',
-          }}
-        >
-          Close
-        </button>
+        {/* Close + Reset row */}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={onClose}
+            style={{
+              flex: 1,
+              padding: '10px',
+              borderRadius: '6px',
+              border: '1px solid #444',
+              background: 'transparent',
+              color: '#888',
+              fontSize: '13px',
+              cursor: 'pointer',
+            }}
+          >
+            Close
+          </button>
+          <button
+            onClick={() => {
+              if (!window.confirm('Clear all settings and sign out? This will reset the app to the first-run experience.')) return;
+              // Clear all maquetto localStorage keys
+              const keys = Object.keys(localStorage).filter((k) => k.startsWith('maquetto:'));
+              keys.forEach((k) => localStorage.removeItem(k));
+              localStorage.removeItem('maquetto:first-run-complete');
+              signOut();
+              window.location.reload();
+            }}
+            style={{
+              padding: '10px 16px',
+              borderRadius: '6px',
+              border: '1px solid #f44336',
+              background: 'transparent',
+              color: '#f44336',
+              fontSize: '13px',
+              cursor: 'pointer',
+            }}
+          >
+            Clear all settings
+          </button>
+        </div>
       </div>
     </div>
   );
