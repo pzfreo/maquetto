@@ -237,9 +237,14 @@ export function Toolbar({ onCompile, onStop, onRetryEngine }: ToolbarProps) {
             maxWidth: '180px',
           }}
         >
-          {authUser.avatarUrl && (
-            <img src={authUser.avatarUrl} alt="" width={18} height={18} style={{ borderRadius: '50%' }} />
-          )}
+          <span style={{
+            width: 18, height: 18, borderRadius: '50%',
+            background: '#4a9eff', color: '#fff', fontSize: '10px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontWeight: 600, flexShrink: 0,
+          }}>
+            {(authUser.name ?? authUser.email ?? '?')[0]!.toUpperCase()}
+          </span>
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {authUser.email ?? authUser.name}
           </span>

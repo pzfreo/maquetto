@@ -130,15 +130,14 @@ export function ProviderSettingsModal({
           </div>
           {authUser ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              {authUser.avatarUrl && (
-                <img
-                  src={authUser.avatarUrl}
-                  alt=""
-                  width={28}
-                  height={28}
-                  style={{ borderRadius: '50%' }}
-                />
-              )}
+              <span style={{
+                width: 28, height: 28, borderRadius: '50%',
+                background: '#4a9eff', color: '#fff', fontSize: '13px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontWeight: 600, flexShrink: 0,
+              }}>
+                {(authUser.name ?? authUser.email ?? '?')[0]!.toUpperCase()}
+              </span>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: '13px', color: '#e0e0e0' }}>
                   {authUser.name ?? authUser.email}

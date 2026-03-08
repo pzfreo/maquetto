@@ -29,15 +29,42 @@ function ScreenshotRegistrar() {
   return null;
 }
 
+/**
+ * Loading text overlay — separate component so its re-renders from
+ * engine status updates don't touch ViewportPanel or the Canvas.
+ */
+function LoadingOverlay() {
+  const gltfData = useAppStore((s) => s.gltfData);
+  const phase = useAppStore((s) => s.engineStatus.phase);
+  const progress = useAppStore((s) => s.engineStatus.progress);
+
+  if (gltfData) return null;
+  if (phase === 'ready') return null;
+
+  const label = phase === 'error'
+    ? 'Engine failed to load'
+    : `Loading${progress > 0 ? ` (${progress}%)` : '...'}`;
+
+  return (
+    <div style={{
+      position: 'absolute',
+      bottom: '24px',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      color: '#8888aa',
+      fontSize: '14px',
+      fontFamily: 'system-ui, sans-serif',
+      whiteSpace: 'nowrap',
+      userSelect: 'none',
+      pointerEvents: 'none',
+    }}>
+      {label}
+    </div>
+  );
+}
+
 export function ViewportPanel() {
   const gltfData = useAppStore((s) => s.gltfData);
-  const enginePhase = useAppStore((s) => s.engineStatus.phase);
-  const engineProgress = useAppStore((s) => s.engineStatus.progress);
-
-  const showLogo = !gltfData;
-  const loadingLabel = enginePhase === 'ready' ? null
-    : enginePhase === 'error' ? 'Engine failed to load'
-    : `Loading${engineProgress > 0 ? ` (${engineProgress}%)` : '...'}`;
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -67,22 +94,7 @@ export function ViewportPanel() {
         <PartLabels />
         <ViewportHelper />
       </Canvas>
-      {showLogo && loadingLabel && (
-        <div style={{
-          position: 'absolute',
-          bottom: '40%',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          color: '#8888aa',
-          fontSize: '14px',
-          fontFamily: 'system-ui, sans-serif',
-          whiteSpace: 'nowrap',
-          userSelect: 'none',
-          pointerEvents: 'none',
-        }}>
-          {loadingLabel}
-        </div>
-      )}
+      <LoadingOverlay />
       <PartsPanel />
     </div>
   );
