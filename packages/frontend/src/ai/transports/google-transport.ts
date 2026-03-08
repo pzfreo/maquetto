@@ -12,7 +12,7 @@ import { DataUrlSafeChatTransport } from './data-url-safe-transport';
 export function createGoogleTransport(
   credential: string,
   systemPrompt: string,
-  compileFn: CompileFn | null,
+  compileFn: CompileFn,
   modelId?: string,
 ) {
   const resolvedModel = modelId || 'gemini-2.0-flash';

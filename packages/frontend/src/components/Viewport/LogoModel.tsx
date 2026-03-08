@@ -1,18 +1,10 @@
-import { useRef, useMemo } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useMemo } from 'react';
 import * as THREE from 'three';
 
-// Module-level start time so rotation is smooth even if component remounts.
-const START = performance.now();
-
 /**
- * 3D spinning cube logo shown in the viewport while the CAD engine loads.
- *
- * The entire scene graph is built as a single THREE.Group in useMemo and
- * rendered via <primitive>. React's reconciler only sees the stable object
- * reference — it never touches rotation or any transform props. Animation
- * is purely imperative via useFrame, so there's no conflict with React
- * re-renders or OrbitControls.
+ * Static 3D cube logo shown in the viewport while the CAD engine loads.
+ * Built as a single THREE.Group and rendered via <primitive> so React's
+ * reconciler never touches its transforms.
  */
 export function LogoModel() {
   const group = useMemo(() => {
@@ -93,15 +85,9 @@ export function LogoModel() {
       [s + 0.1, -s * 0.5, -s * 0.1], [s + 0.1, -s * 0.5, -s * 0.5],
     ], purple, 0.8));
 
+    g.rotation.y = Math.PI / 6;
     return g;
   }, []);
-
-  const ref = useRef<THREE.Group>(group);
-
-  useFrame(() => {
-    const elapsed = (performance.now() - START) / 1000;
-    ref.current.rotation.y = elapsed * 0.3;
-  });
 
   return <primitive object={group} />;
 }

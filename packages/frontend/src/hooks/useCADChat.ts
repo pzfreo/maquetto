@@ -41,13 +41,11 @@ export function useCADChat(engine: CadEngine | null) {
     return engineRef.current.compile(codeToTest, 'normal');
   }, []);
 
-  // The tool is always registered (returns "engine not ready" error if
-  // compileFn can't run yet). Recreate when the engine loads so the tool's
-  // closure captures the live compileFn.
-  const engineReady = !!engine;
+  // Always pass compileFn — it uses engineRef internally so it's always
+  // up to date. No need to recreate the transport when the engine loads.
   const transport = useMemo(
-    () => createTransport(aiProvider, engineReady ? compileFn : null, customSystemPrompt),
-    [aiProvider, compileFn, engineReady, customSystemPrompt],
+    () => createTransport(aiProvider, compileFn, customSystemPrompt),
+    [aiProvider, compileFn, customSystemPrompt],
   );
 
   const chat = useChat({

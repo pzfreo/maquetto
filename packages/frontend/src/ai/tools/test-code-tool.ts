@@ -31,12 +31,11 @@ function captureViewportScreenshot(): Promise<string | null> {
 }
 
 /**
- * Creates the test_code tool. Always registers the tool so the model can
- * see it, but returns a clear error when the CAD engine isn't ready yet.
- * This prevents the model from hallucinating text-based tool call markup
- * when the system prompt mentions test_code but the tool isn't registered.
+ * Creates the test_code tool. The compileFn uses a ref internally so it's
+ * always up to date — if the engine isn't ready it throws, which the
+ * try/catch handles gracefully.
  */
-export function createTestCodeTool(compileFn: CompileFn | null) {
+export function createTestCodeTool(compileFn: CompileFn) {
   const inputSchema = z.object({
     code: z.string().describe('Complete Build123d Python code to test'),
   });
@@ -50,18 +49,6 @@ export function createTestCodeTool(compileFn: CompileFn | null) {
       'MANDATORY: Test Build123d Python code by compiling it in the CAD engine. You MUST call this tool before presenting ANY code to the user. Returns compilation errors (fix and retry) or success with part count and a viewport screenshot showing the rendered result.',
     inputSchema,
     execute: async ({ code }: z.infer<typeof inputSchema>) => {
-      if (!compileFn) {
-        console.log('[test_code] Engine not ready, returning error');
-        return {
-          success: false as const,
-          errors: [{
-            type: 'engine' as const,
-            message: 'The CAD engine is still loading. Please wait a moment and try again.',
-            line: null,
-          }],
-        };
-      }
-
       console.log('[test_code] Testing code...', code.length, 'chars');
       try {
         const result = await compileFn(code);
