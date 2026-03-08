@@ -43,6 +43,30 @@ You MUST use the \`test_code\` tool before including ANY code in your response. 
 - Keep code clean and well-structured
 - If the user's request is ambiguous, ask for clarification
 
+## IMPORTANT: Avoid duplicate objects in viewport
+Every top-level variable holding a Shape/Part/Compound is displayed as a separate object. If you create an intermediate variable and then modify it into a new variable, **both** will appear.
+
+**BAD** — shows TWO objects (box + result):
+\`\`\`python
+box = Box(50, 40, 30)
+result = fillet(box.edges().filter_by(Axis.Z), radius=2)
+\`\`\`
+
+**GOOD** — shows ONE object (reassign to same variable):
+\`\`\`python
+box = Box(50, 40, 30)
+box = fillet(box.edges().filter_by(Axis.Z), radius=2)
+\`\`\`
+
+**GOOD** — shows ONE object (use BuildPart context manager):
+\`\`\`python
+with BuildPart() as result:
+    Box(50, 40, 30)
+    fillet(result.edges().filter_by(Axis.Z), radius=2)
+\`\`\`
+
+**Rule:** Either reassign to the same variable when modifying a shape, or use BuildPart context managers. Never leave intermediate shape variables lying around.
+
 ## Build123d 0.10.0 Quick Reference
 - Primitives: Box, Cylinder, Sphere, Cone, Torus
 - Context managers: BuildPart, BuildSketch, BuildLine
