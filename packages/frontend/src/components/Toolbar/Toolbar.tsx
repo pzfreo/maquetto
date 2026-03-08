@@ -8,10 +8,11 @@ import { signInWithGoogle } from '../../lib/auth-actions';
 
 interface ToolbarProps {
   onCompile?: () => void;
+  onStop?: () => void;
   onRetryEngine?: () => void;
 }
 
-export function Toolbar({ onCompile, onRetryEngine }: ToolbarProps) {
+export function Toolbar({ onCompile, onStop, onRetryEngine }: ToolbarProps) {
   const enginePhase = useAppStore((s) => s.engineStatus.phase);
   const compilationStatus = useAppStore((s) => s.compilationStatus);
   const aiProvider = useAppStore((s) => s.aiProvider);
@@ -154,23 +155,42 @@ export function Toolbar({ onCompile, onRetryEngine }: ToolbarProps) {
         )}
       </div>
 
-      <button
-        onClick={onCompile}
-        disabled={!isReady || isCompiling}
-        title={!isReady ? 'Engine is loading…' : 'Run code (Ctrl+Enter)'}
-        style={{
-          padding: '4px 14px',
-          borderRadius: '4px',
-          border: 'none',
-          background: isReady && !isCompiling ? '#4caf50' : '#333',
-          color: isReady && !isCompiling ? '#fff' : '#888',
-          cursor: isReady && !isCompiling ? 'pointer' : 'not-allowed',
-          fontSize: '13px',
-          fontWeight: 500,
-        }}
-      >
-        {isCompiling ? 'Running…' : '▶ Run'}
-      </button>
+      {isCompiling ? (
+        <button
+          onClick={onStop}
+          title="Stop running code"
+          style={{
+            padding: '4px 14px',
+            borderRadius: '4px',
+            border: 'none',
+            background: '#f44336',
+            color: '#fff',
+            cursor: 'pointer',
+            fontSize: '13px',
+            fontWeight: 500,
+          }}
+        >
+          ■ Stop
+        </button>
+      ) : (
+        <button
+          onClick={onCompile}
+          disabled={!isReady}
+          title={!isReady ? 'Engine is loading…' : 'Run code (Ctrl+Enter)'}
+          style={{
+            padding: '4px 14px',
+            borderRadius: '4px',
+            border: 'none',
+            background: isReady ? '#4caf50' : '#333',
+            color: isReady ? '#fff' : '#888',
+            cursor: isReady ? 'pointer' : 'not-allowed',
+            fontSize: '13px',
+            fontWeight: 500,
+          }}
+        >
+          ▶ Run
+        </button>
+      )}
 
       <EngineStatusBadge onRetry={onRetryEngine} />
 

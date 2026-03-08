@@ -8,16 +8,17 @@ import './Layout.css';
 
 interface LayoutProps {
   onCompile?: () => void;
+  onStop?: () => void;
   onRetryEngine?: () => void;
   engine?: CadEngine | null;
 }
 
-export function Layout({ onCompile, onRetryEngine, engine }: LayoutProps) {
+export function Layout({ onCompile, onStop, onRetryEngine, engine }: LayoutProps) {
   const isDiffExpanded = useAppStore((s) => s.isDiffExpanded);
 
   return (
     <div className="layout">
-      <Toolbar onCompile={onCompile} onRetryEngine={onRetryEngine} />
+      <Toolbar onCompile={onCompile} onStop={onStop} onRetryEngine={onRetryEngine} />
       <div className={`layout-panels ${isDiffExpanded ? 'layout-panels-expanded' : ''}`}>
         <div className="layout-panel layout-editor">
           <EditorPanel onCompile={onCompile} />

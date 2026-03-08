@@ -16,6 +16,7 @@ function createMockEngine(result: CompileResult): CadEngine {
     async compile() {
       return result;
     },
+    cancelCompile() { /* noop in test */ },
     retry() {
       for (const cb of listeners) {
         cb({ phase: 'loading-pyodide', progress: 10 });

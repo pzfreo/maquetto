@@ -29,6 +29,30 @@ function hasImageAttachment(parts: ReadonlyArray<{ type: string; text?: string }
   );
 }
 
+/**
+ * Extract code from the last successful test_code tool call in the message parts.
+ * Fallback for when the AI doesn't include code in its text response.
+ */
+function getCodeFromToolCalls(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  parts: ReadonlyArray<Record<string, any>>,
+): string | null {
+  // Walk backwards to find the last successful test_code call
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const p = parts[i]!;
+    if (
+      (p.type === 'tool-invocation' || p.type?.startsWith?.('tool-'))
+      && p.toolName === 'test_code'
+      && p.state === 'output-available'
+      && p.output?.success === true
+      && typeof p.args?.code === 'string'
+    ) {
+      return p.args.code;
+    }
+  }
+  return null;
+}
+
 interface ToolInvocationInfo {
   count: number;
   latestState: string;
@@ -130,14 +154,17 @@ export function ChatPanel({ onCompile, engine }: ChatPanelProps) {
       const fullText = getMessageText(lastAssistant.parts);
       const codeBlocks = parseCodeBlocks(fullText);
 
-      // Find the last Python code block
+      // Find the last Python code block from text
       const pythonBlocks = codeBlocks.filter(
         (b) => b.language === 'python' || b.language === 'py' || b.language === '',
       );
       const lastBlock = pythonBlocks[pythonBlocks.length - 1];
-      if (!lastBlock) return;
 
-      const newCode = lastBlock.code.trim();
+      // Fallback: if no code block in text, extract from successful test_code tool call
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const toolCode = !lastBlock ? getCodeFromToolCalls(lastAssistant.parts as ReadonlyArray<Record<string, any>>) : null;
+
+      const newCode = (lastBlock?.code ?? toolCode ?? '').trim();
       if (!newCode) return;
 
       // Find the user prompt that triggered this response

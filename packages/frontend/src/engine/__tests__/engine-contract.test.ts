@@ -48,6 +48,7 @@ function createMockEngine(options?: {
       return options?.compileResult ?? defaultResult;
     },
 
+    cancelCompile() { /* noop in test */ },
     retry() {
       // Re-emit init phases on retry
       if (options?.initPhases) {
