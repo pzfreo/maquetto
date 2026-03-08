@@ -46,17 +46,31 @@ const PYODIDE_CDN = 'https://cdn.jsdelivr.net/pyodide/v0.29.0/full/';
 
 let pyodide: PyodideInterface | null = null;
 
-// --- Security: block network APIs in worker scope ---
-// User Python code could access these via Pyodide's js module bridge
-// (which we also block), but defense-in-depth: remove them from the
-// worker global so even if the import block is bypassed, no network.
-const _originalFetch = self.fetch; // keep for internal use if needed
+// --- Security: block network APIs during user code execution ---
+// Save originals so Pyodide/micropip can still use them during init.
+// We disable them only while user code runs, then restore after.
+const _originalFetch = self.fetch;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-(self as any).fetch = undefined;
+const _originalXHR = (self as any).XMLHttpRequest;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-(self as any).XMLHttpRequest = undefined;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(self as any).WebSocket = undefined;
+const _originalWebSocket = (self as any).WebSocket;
+
+function blockNetworkAPIs(): void {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (self as any).fetch = undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (self as any).XMLHttpRequest = undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (self as any).WebSocket = undefined;
+}
+
+function restoreNetworkAPIs(): void {
+  self.fetch = _originalFetch;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (self as any).XMLHttpRequest = _originalXHR;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (self as any).WebSocket = _originalWebSocket;
+}
 
 function postStatus(phase: EnginePhase, progress: number): void {
   const msg: WorkerResponse = {
@@ -186,9 +200,16 @@ async function handleCompile(
     pyodide.globals.set('_user_code', code);
     pyodide.globals.set('_quality_level', quality);
 
-    const resultJson = (await pyodide.runPythonAsync(
-      '_execute_and_export(_user_code, _quality_level)',
-    )) as string;
+    // Block network APIs while user code runs (defense-in-depth)
+    blockNetworkAPIs();
+    let resultJson: string;
+    try {
+      resultJson = (await pyodide.runPythonAsync(
+        '_execute_and_export(_user_code, _quality_level)',
+      )) as string;
+    } finally {
+      restoreNetworkAPIs();
+    }
 
     const result = JSON.parse(resultJson);
     console.log(`[Worker] Compilation complete: ${result.errors.length} errors, ${result.warnings.length} warnings, ${result.parts.length} parts, glTF=${result.gltfBase64.length} chars, ${result.executionTimeMs}ms`);
