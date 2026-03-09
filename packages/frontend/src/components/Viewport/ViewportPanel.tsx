@@ -93,7 +93,7 @@ export const ViewportPanel = memo(function ViewportPanel() {
         {gltfData ? <CADModel data={gltfData} /> : <LogoModel />}
         <PartLabels />
         <ViewportHelper />
-        <GizmoHelper alignment="top-right" margin={[80, 80]}>
+        <GizmoHelper alignment="bottom-left" margin={[80, 80]}>
           <GizmoViewcube
             faces={['Right', 'Left', 'Top', 'Bottom', 'Front', 'Back']}
             color="#2a2a40"
