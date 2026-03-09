@@ -1,6 +1,6 @@
 import { useEffect, useCallback, memo } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
-import { Environment, OrbitControls, Grid } from '@react-three/drei';
+import { Environment, OrbitControls, Grid, GizmoHelper, GizmoViewcube } from '@react-three/drei';
 import * as THREE from 'three';
 import { useAppStore } from '../../store';
 import { SceneLighting } from './SceneLighting';
@@ -93,6 +93,16 @@ export const ViewportPanel = memo(function ViewportPanel() {
         {gltfData ? <CADModel data={gltfData} /> : <LogoModel />}
         <PartLabels />
         <ViewportHelper />
+        <GizmoHelper alignment="top-right" margin={[80, 80]}>
+          <GizmoViewcube
+            faces={['Right', 'Left', 'Top', 'Bottom', 'Front', 'Back']}
+            color="#2a2a40"
+            textColor="#ccccdd"
+            hoverColor="#4455cc"
+            strokeColor="#444466"
+            opacity={0.9}
+          />
+        </GizmoHelper>
       </Canvas>
       <LoadingOverlay />
       <PartsPanel />
