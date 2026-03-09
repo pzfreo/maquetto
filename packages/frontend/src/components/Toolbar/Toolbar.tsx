@@ -115,7 +115,12 @@ export function Toolbar({ onCompile, onStop, onRetryEngine, engine, onOpenProjec
         const mimeType = format === 'stl'
           ? 'application/vnd.ms-stt'
           : 'application/step';
-        downloadBlob(result.data, result.filename, mimeType);
+        const title = useAppStore.getState().currentProject?.title ?? 'model';
+        const slug = title.toLowerCase().replace(/\s+/g, '_');
+        const now = new Date();
+        const timestamp = now.toISOString().slice(0, 16).replace('T', '_').replace(':', '-');
+        const filename = `${slug}_${timestamp}.${format}`;
+        downloadBlob(result.data, filename, mimeType);
       } catch (err) {
         console.error('[Toolbar] Export failed:', err);
         alert(`Export failed: ${err}`);
@@ -129,7 +134,8 @@ export function Toolbar({ onCompile, onStop, onRetryEngine, engine, onOpenProjec
     setFileMenuOpen(false);
     requireTitle(() => {
       const title = useAppStore.getState().currentProject?.title ?? 'model';
-      const filename = `${title.toLowerCase().replace(/\s+/g, '_')}.py`;
+      const slug = title.toLowerCase().replace(/\s+/g, '_');
+      const filename = `${slug}.py`;
       downloadText(code, filename, 'text/x-python');
     });
   }, [code, requireTitle]);
