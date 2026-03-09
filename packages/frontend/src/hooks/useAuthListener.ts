@@ -41,11 +41,13 @@ export function setPendingGoogleAI() {
  */
 function maybeAutoConfigureAI(providerToken: string | null) {
   if (!localStorage.getItem(PENDING_GOOGLE_AI_KEY)) return;
-  localStorage.removeItem(PENDING_GOOGLE_AI_KEY);
-  if (providerToken) {
-    console.log('[Auth] Auto-configuring Google AI provider from OAuth');
-    useAppStore.getState().setAIProvider({ type: 'google-oauth', credential: providerToken });
+  if (!providerToken) {
+    console.warn('[Auth] Pending Google AI flag set but no provider_token received');
+    return;
   }
+  localStorage.removeItem(PENDING_GOOGLE_AI_KEY);
+  console.log('[Auth] Auto-configuring Google AI provider from OAuth');
+  useAppStore.getState().setAIProvider({ type: 'google-oauth', credential: providerToken });
 }
 
 /**
@@ -117,6 +119,15 @@ export function useAuthListener() {
         if (session.provider_refresh_token) {
           setProviderRefreshToken(session.provider_refresh_token);
         }
+        // If we have a Google provider token but aiProvider is 'none',
+        // the initial config was lost — recover it
+        if (session.provider_token && useAppStore.getState().aiProvider.type === 'none') {
+          const userProvider = (session.user.app_metadata.provider as string);
+          if (userProvider === 'google') {
+            console.log('[Auth] Recovering Google AI provider from session');
+            useAppStore.getState().setAIProvider({ type: 'google-oauth', credential: session.provider_token });
+          }
+        }
       }
       setAuthLoading(false);
     });
@@ -129,6 +140,9 @@ export function useAuthListener() {
           setAuthUser(extractAuthUser(session));
           if (session.provider_token) {
             setProviderToken(session.provider_token);
+            // Fallback: if handleOAuthResult missed the provider_token
+            // (e.g. PKCE flow), auto-configure here when the pending flag is set
+            maybeAutoConfigureAI(session.provider_token);
           }
           if (session.provider_refresh_token) {
             setProviderRefreshToken(session.provider_refresh_token);
