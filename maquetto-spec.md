@@ -99,23 +99,28 @@ authentication and Gemini API access.
 ### Power User Provider: Anthropic Claude (BYOK)
 
 Better code generation quality for Build123d, but requires manual
-API key setup. Available to any authenticated user (Google or GitHub).
+API key setup. Available to any user (no sign-in required).
 
 - Package: @ai-sdk/anthropic
-- Auth: user pastes API key from console.anthropic.com
-- Key stored in Supabase user metadata (encrypted at rest) so it
-  persists across devices; also cached in memory for the session
-- Requires a minimal stateless edge proxy for CORS forwarding
-- The proxy must never log or store the key — it receives it in a
-  request header and forwards to Anthropic's API
-- Deploy proxy to Vercel Edge or Cloudflare Workers
+- Auth: user pastes API key from platform.claude.com
+- Key stored locally in browser (localStorage), never sent to our servers
+- No proxy needed — Anthropic supports direct browser access via the
+  `anthropic-dangerous-direct-browser-access` header (safe for BYOK
+  since the user controls their own key)
+
+### Google Gemini BYOK
+
+Users can also use Gemini with their own API key (no Google sign-in
+required). Get a key from aistudio.google.com. Google's Generative
+AI API supports CORS, so no proxy is needed.
 
 ### Future Providers
 
 Adding a provider requires only installing its @ai-sdk package and
 registering it in the provider registry. No changes to the chat UI,
 context assembly, or response parsing. Likely candidates: OpenAI
-(GPT), local models via Ollama, Mistral.
+(GPT — blocked on CORS, would need a proxy), local models via
+Ollama, Mistral.
 
 ### Context Assembly
 
@@ -134,12 +139,22 @@ The system prompt instructs the AI to reference parts by their
 @-labels, understand spatial relationships from the metadata, and
 always output complete Build123d scripts in Python code blocks.
 
+### Tool-Loop Agent
+
+The AI uses a tool-loop architecture via Vercel AI SDK's ToolLoopAgent.
+The primary tool is `test_code`, which compiles the AI's generated code
+in Pyodide before presenting it. If compilation fails, the AI is forced
+to fix and retry (up to 6 steps). On success, the code is automatically
+applied to the editor — the AI doesn't need to repeat it in text.
+
+For conversational messages (e.g. "thanks", "looks good"), the AI
+responds without invoking tools (toolChoice: 'auto').
+
 ### Response Handling
 
-When a Python code block appears in the AI response, show an "Apply to
-Editor" button. Clicking it replaces the editor content and triggers
-recompilation. Part references (A, B, C) in chat text are rendered as
-colored badges matching the viewport colors.
+Part references (A, B, C) in chat text are rendered as colored badges
+matching the viewport colors. The chat panel shows thinking indicators
+("AI is thinking...", tool activity status) during streaming.
 
 
 ## CAD Engine Abstraction
@@ -240,6 +255,8 @@ rendering. Out-of-the-box Three.js looks flat — configure it properly:
 - Grid helper on the ground plane for scale reference
 - Background gradient via CSS behind a transparent Three.js canvas
 - OrbitControls for rotate, pan, zoom
+- View cube (GizmoViewcube from drei) in bottom-left corner for
+  standard CAD views (Front, Back, Left, Right, Top, Bottom)
 
 ### Mesh Loading
 
@@ -284,16 +301,14 @@ user setting, but default to manual for the prototype.
 
 ## Authentication and Cloud Storage
 
-### Supabase Auth (Google + GitHub)
+### Supabase Auth (Google)
 
-User authentication is handled by Supabase with two OAuth providers:
+User authentication is handled by Supabase with Google OAuth:
 
-- **Google**: Primary sign-in. Provides both app auth and Gemini API
-  access via the OAuth provider token. One click to sign in and start
-  using AI immediately.
-- **GitHub**: Alternative sign-in for developers who prefer it. Provides
-  app auth and cloud save only — AI providers must be configured
-  separately via BYOK.
+- **Google**: Provides app auth and cloud save. When combined with
+  the Gemini OAuth scope, also provides free Gemini API access via
+  the provider token. Sign-in is optional — users can use BYOK
+  without an account.
 
 Authentication state is managed in a Zustand auth slice that wraps
 the Supabase client. The slice exposes: `user`, `session`,
@@ -309,10 +324,8 @@ the Supabase client. The slice exposes: `user`, `session`,
    sign-out, and token refresh
 3. On Google sign-in, the Gemini provider is auto-configured using
    `session.provider_token` — no manual API key entry needed
-4. On GitHub sign-in, user is prompted to optionally configure AI
-   providers (BYOK for Gemini and/or Claude)
-5. Anthropic API keys are stored in Supabase user metadata
-   (`auth.users.raw_user_meta_data`) so they persist across devices
+4. API keys are stored locally in browser localStorage, never sent
+   to our servers
 
 ### Cloud Save/Load
 
@@ -343,12 +356,12 @@ UI changes for cloud save:
 - "My Projects" dropdown listing saved projects sorted by updated_at
 - Unauthenticated users continue to use localStorage only
 
-### Unauthenticated Fallback
+### Unauthenticated Usage
 
-The app remains fully usable without signing in:
+The app is fully usable without signing in:
 - Editor, viewport, and AI chat work with BYOK API keys
 - Code is stored in localStorage only (no cloud persistence)
-- "Sign in to save to cloud" prompt shown non-intrusively
+- Users can sign in later from the toolbar for cloud save
 
 
 ## First-Run Experience
@@ -356,15 +369,19 @@ The app remains fully usable without signing in:
 On first visit, before the user sees the full IDE:
 
 1. Brief splash/welcome explaining what Maquetto is
-2. Sign-in options:
-   - Primary: "Sign in with Google" button — provides auth + Gemini AI
-   - Secondary: "Sign in with GitHub" button — provides auth, AI
-     configured separately
-   - "Continue without account" — editor + BYOK only, no cloud save
-3. For Google sign-in: user is immediately ready (Gemini auto-configured)
-4. For GitHub sign-in: optional BYOK setup for AI providers
-5. Show the IDE with a starter Build123d script and auto-compile when
-   the engine is ready
+2. Three paths, prioritising getting productive with AI immediately:
+   - **Primary: BYOK card** — tabbed picker for Gemini or Claude,
+     paste an API key and go. No sign-in required. Links to
+     aistudio.google.com (Gemini) or platform.claude.com (Claude).
+   - **Secondary: Google + Gemini OAuth** — one-click sign-in for
+     free Gemini AI and cloud save. No API key needed. (Pending
+     Google OAuth verification — users may see an "unverified app"
+     warning.)
+   - **Skip** — editor-only mode, no AI
+3. Users can sign in with Google later from the toolbar for cloud save
+   (progressive discovery — don't force sign-in upfront)
+4. Show the IDE with a starter Build123d script and auto-compile when
+   the engine is ready (engine loads in background during first-run)
 
 Provider settings and account management are accessible from a settings
 icon in the toolbar.
@@ -384,9 +401,10 @@ Monorepo with pnpm workspaces:
   Viewport, Chat, Loading, Layout. Each domain has its component, its
   custom hook for logic, and its tests. Shared state in a Zustand store.
 
-- **packages/api-proxy**: Optional edge function for Claude API
-  proxying. Only needed if the user selects Anthropic as their AI
-  provider. Deployable to Vercel Edge or Cloudflare Workers.
+- **packages/api-proxy**: Reserved for future use. Both Google and
+  Anthropic support direct browser access, so no proxy is currently
+  needed. Would be required for OpenAI or other providers without
+  CORS support.
 
 
 ## State Management
@@ -440,33 +458,49 @@ Verify request forwarding, SSE streaming passthrough, CORS headers,
 rate limiting, and that API keys are never logged.
 
 
-## Prototype Scope
-
-### Build
+## Implemented Features
 
 - Web Worker with Pyodide + OCP.wasm, progressive loading with status
 - CadEngine interface and Web Worker implementation
 - Service worker for WASM and wheel caching
 - Monaco editor with Python highlighting, error markers, Build123d
   completions
-- Three.js viewport with PBR rendering, part labels, part selection
-- AI chat with Vercel AI SDK, streaming, code blocks, Apply to Editor
-- Supabase auth with Google OAuth (login + Gemini token) and GitHub
-- Google Gemini provider using Supabase `provider_token`
-- Anthropic Claude provider with BYOK (key stored in user metadata)
+- Three.js viewport with PBR rendering, part labels, part selection,
+  view cube
+- AI chat with tool-loop agent (test_code), streaming, thinking
+  indicators
+- Google Gemini (OAuth + BYOK) and Anthropic Claude (BYOK)
 - Viewport screenshot capture for AI vision context
-- Cloud save/load of projects via Supabase Postgres with RLS
-- First-run sign-in and provider setup screen
+- Supabase auth with Google OAuth, cloud save/load with RLS
+- BYOK-first onboarding screen (Gemini/Claude tabs)
+- Rename projects, import/export Python, export STL/STEP
+- Credential validation on startup and provider change
+- Version history with diff view
+- Vercel Analytics
+- Python sandbox (blocked js/pyodide imports, network APIs)
+- Stop button for long-running compilations
 - Tests for engine contract, hooks, and components
 
-### Do Not Build
+### Phase 2 (Complete)
 
-- Export to STL, STEP, or 3MF
+- Rename projects (editable title in toolbar, reflected in editor tab)
+- Cloud save/load of projects via Supabase Postgres with RLS
+- Import/export Python code to/from local files
+- Export to STL and STEP (filenames include project name + timestamp)
+- View cube for standard CAD views
+- Gemini BYOK support (in addition to OAuth)
+- BYOK-first onboarding flow
+- Credential validation on startup
+- Version history with diff view
+- Vercel Analytics
+
+### Do Not Build (Yet)
+
 - Multiple files or editor tabs
 - Undo/redo
-- Settings panel beyond provider selection and account
-- Face or edge selection (part-level only for prototype)
+- Face or edge selection (part-level only for now)
 - Collaboration or sharing features
+- OpenAI provider (blocked on CORS)
 
 
 ## Tech Stack
