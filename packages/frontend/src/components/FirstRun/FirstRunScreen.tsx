@@ -95,8 +95,11 @@ export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
 
   const placeholder = byokProvider === 'gemini' ? 'AIza...' : 'sk-ant-api...';
   const keyHelpUrl = byokProvider === 'gemini'
-    ? 'aistudio.google.com'
-    : 'console.anthropic.com';
+    ? 'https://aistudio.google.com/apikey'
+    : 'https://platform.claude.com/';
+  const keyHelpLabel = byokProvider === 'gemini'
+    ? 'Google AI Studio'
+    : 'platform.claude.com';
 
   const tabStyle = (active: boolean) => ({
     flex: 1,
@@ -104,7 +107,7 @@ export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
     borderRadius: '8px 8px 0 0',
     border: 'none',
     borderBottom: active ? '2px solid #4a9eff' : '2px solid transparent',
-    background: active ? '#1e1e3a' : 'transparent',
+    background: active ? '#2a2a4e' : 'transparent',
     color: active ? '#fff' : '#888',
     fontSize: '14px',
     fontWeight: active ? 600 : 400 as const,
@@ -162,8 +165,8 @@ export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
         <div
           style={{
             borderRadius: '12px',
-            border: '1px solid #333',
-            background: '#141428',
+            border: '1px solid #4a4a6a',
+            background: '#1e1e3a',
             overflow: 'hidden',
             marginBottom: '20px',
           }}
@@ -209,8 +212,8 @@ export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
                   flex: 1,
                   padding: '12px 14px',
                   borderRadius: '8px',
-                  border: '1px solid #444',
-                  background: '#0d0d1a',
+                  border: '1px solid #555',
+                  background: '#12122a',
                   color: '#e0e0e0',
                   fontSize: '14px',
                   fontFamily: 'monospace',
@@ -236,7 +239,7 @@ export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
               </button>
             </div>
             <p style={{ fontSize: '12px', color: '#666', margin: '10px 0 0 0', textAlign: 'left' }}>
-              Get a key from {keyHelpUrl}.
+              Get a key from <a href={keyHelpUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#4a9eff' }}>{keyHelpLabel}</a>.
               Stored locally in your browser, never sent to our servers.
             </p>
           </div>
@@ -251,9 +254,9 @@ export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
             margin: '0 0 16px',
           }}
         >
-          <div style={{ flex: 1, height: '1px', background: '#333' }} />
+          <div style={{ flex: 1, height: '1px', background: '#4a4a6a' }} />
           <span style={{ fontSize: '12px', color: '#666' }}>or</span>
-          <div style={{ flex: 1, height: '1px', background: '#333' }} />
+          <div style={{ flex: 1, height: '1px', background: '#4a4a6a' }} />
         </div>
 
         <button
@@ -262,7 +265,7 @@ export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
           style={{
             padding: '12px 24px',
             borderRadius: '8px',
-            border: '1px solid #444',
+            border: '1px solid #556',
             background: 'transparent',
             color: connectingGemini ? '#888' : '#ccc',
             fontSize: '14px',
