@@ -25,6 +25,8 @@ export function EditorPanel({ onCompile }: EditorPanelProps) {
   const code = useAppStore((s) => s.code);
   const setCode = useAppStore((s) => s.setCode);
   const errors = useAppStore((s) => s.errors);
+  const projectTitle = useAppStore((s) => s.currentProject?.title);
+  const editorTabLabel = `${(projectTitle ?? 'untitled').toLowerCase().replace(/\s+/g, '_')}.py`;
 
   // Version history state
   const versions = useAppStore((s) => s.versions);
@@ -107,7 +109,7 @@ export function EditorPanel({ onCompile }: EditorPanelProps) {
           gap: '8px',
         }}
       >
-        <span>main.py</span>
+        <span>{editorTabLabel}</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           {versions.length > 0 && (
             <select
