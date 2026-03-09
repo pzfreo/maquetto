@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppStore } from '../../store';
 import { signInWithGoogle, signInWithGoogleAI } from '../../lib/auth-actions';
-import { setPendingGoogleAI } from '../../hooks/useAuthListener';
+import { setPendingGoogleAI, clearPendingGoogleAI } from '../../hooks/useAuthListener';
 
 const FIRST_RUN_KEY = 'maquetto:first-run-complete';
 
@@ -11,6 +11,14 @@ export function useFirstRun() {
   });
   const aiProvider = useAppStore((s) => s.aiProvider);
   const authUser = useAppStore((s) => s.authUser);
+
+  // If the user chose "Google + Gemini" but the AI provider hasn't been
+  // configured yet, keep showing first-run. Without this, onAuthStateChange
+  // sets authUser (dismissing the screen) before the provider_token arrives.
+  const pendingGoogleAI = localStorage.getItem('maquetto:pending-google-ai') === 'true';
+  if (isFirstRun && pendingGoogleAI && aiProvider.type === 'none') {
+    return true;
+  }
 
   // Show first-run if never completed AND no auth AND no AI provider
   return isFirstRun && aiProvider.type === 'none' && !authUser;
@@ -31,6 +39,20 @@ export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
   const [connectingGemini, setConnectingGemini] = useState(false);
   const [signingInForClaude, setSigningInForClaude] = useState(false);
 
+  // Safety timeout: if pending flag is set but provider never arrives,
+  // clear the flag after 60s so the user isn't stuck on this screen.
+  useEffect(() => {
+    if (!connectingGemini) return;
+    const timeout = setTimeout(() => {
+      if (useAppStore.getState().aiProvider.type === 'none') {
+        console.warn('[FirstRun] Timed out waiting for Google AI provider');
+        clearPendingGoogleAI();
+        setConnectingGemini(false);
+      }
+    }, 60_000);
+    return () => clearTimeout(timeout);
+  }, [connectingGemini]);
+
   const handleGoogleGemini = async () => {
     setConnectingGemini(true);
     try {
@@ -39,6 +61,7 @@ export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
       await signInWithGoogleAI();
       completeFirstRun();
     } catch {
+      clearPendingGoogleAI();
       setConnectingGemini(false);
     }
   };
