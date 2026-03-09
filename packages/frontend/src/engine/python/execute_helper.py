@@ -1,0 +1,228 @@
+import json
+import base64
+import time
+import traceback
+import sys
+
+# Color palette (RGB 0-1) matching TypeScript PART_COLORS
+_PALETTE = [
+    [0.259, 0.522, 0.957],
+    [0.957, 0.318, 0.216],
+    [0.204, 0.659, 0.325],
+    [1.000, 0.702, 0.000],
+    [0.612, 0.153, 0.690],
+    [0.000, 0.737, 0.831],
+    [0.957, 0.490, 0.000],
+    [0.345, 0.298, 0.659],
+    [0.827, 0.184, 0.455],
+    [0.294, 0.686, 0.514],
+    [0.475, 0.333, 0.282],
+    [0.620, 0.620, 0.620],
+]
+
+_QUALITY_MAP = {
+    'draft':  (0.1,   0.5),
+    'normal': (0.01,  0.2),
+    'high':   (0.001, 0.1),
+}
+
+# Generic variable names that don't make useful part labels
+_GENERIC_NAMES = {'result', 'obj', 'shape', 'part', 'compound', 'assembly',
+                  'output', 'model', 'thing', 'temp', 'tmp'}
+
+def _index_to_letter_id(i):
+    """Convert 0-based index to letter label: 0->A, 1->B, ... 25->Z, 26->AA."""
+    result_str = ''
+    n = i
+    while True:
+        result_str = chr(ord('A') + (n % 26)) + result_str
+        n = n // 26 - 1
+        if n < 0:
+            break
+    return result_str
+
+def _var_name_to_display(name):
+    """Convert Python variable name to Title Case display name.
+    Returns None for generic or single-letter names."""
+    if len(name) <= 1 or name.lower() in _GENERIC_NAMES:
+        return None
+    return ' '.join(word.capitalize() for word in name.split('_'))
+
+def _execute_and_export(code_str, quality_level):
+    """Execute user code, find shapes, export glTF + metadata as JSON string."""
+    from build123d import (
+        Shape, Compound, Part, Sketch, BuildPart, BuildSketch, BuildLine,
+        export_gltf, Axis, Color
+    )
+    import numpy
+
+    start_time = time.time()
+
+    # Set up sandboxed namespace with build123d + numpy
+    # __SANDBOX_SETUP__
+
+    # Execute user code
+    try:
+        exec(code_str, namespace)
+    except SyntaxError as e:
+        elapsed = (time.time() - start_time) * 1000
+        return json.dumps({
+            'gltfBase64': '',
+            'parts': [],
+            'errors': [{
+                'type': 'syntax',
+                'message': str(e.msg),
+                'line': e.lineno,
+                'column': e.offset,
+            }],
+            'warnings': [],
+            'executionTimeMs': round(elapsed),
+        })
+    except Exception as e:
+        elapsed = (time.time() - start_time) * 1000
+        # Try to extract line number from traceback
+        line_no = None
+        tb = traceback.extract_tb(e.__traceback__)
+        for frame in reversed(tb):
+            if frame.filename == '<string>':
+                line_no = frame.lineno
+                break
+        # Include full traceback for debugging
+        full_tb = traceback.format_exc()
+        error_msg = f'{type(e).__name__}: {e}'
+        print(f'[Worker] Runtime error at line {line_no}:\n{full_tb}')
+        return json.dumps({
+            'gltfBase64': '',
+            'parts': [],
+            'errors': [{
+                'type': 'runtime',
+                'message': error_msg,
+                'line': line_no,
+                'column': None,
+                'traceback': full_tb,
+            }],
+            'warnings': [],
+            'executionTimeMs': round(elapsed),
+        })
+
+    # Scan only user-created variables for Shape-like objects
+    shapes = []
+    for name, obj in namespace.items():
+        if name in pre_exec_names or name.startswith('_'):
+            continue
+        if isinstance(obj, (Shape, Compound, Part, Sketch)):
+            print(f'[export] Found shape: {name} ({type(obj).__name__})')
+            shapes.append((name, obj))
+        # Also check for BuildPart context manager results
+        # Skip BuildPart with non-ADD mode (e.g. SUBTRACT, INTERSECT) —
+        # these are operations on a parent part, not standalone shapes.
+        elif hasattr(obj, 'part') and isinstance(getattr(obj, 'part', None), (Shape, Part)):
+            mode = getattr(obj, 'mode', None)
+            if mode is not None and hasattr(mode, 'name') and mode.name != 'ADD':
+                print(f'[export] Skipping {name} (mode={mode.name}, child of parent BuildPart)')
+                continue
+            print(f'[export] Found BuildPart result: {name}')
+            shapes.append((name, obj.part))
+        elif hasattr(obj, 'sketch') and isinstance(getattr(obj, 'sketch', None), (Shape, Sketch)):
+            print(f'[export] Found BuildSketch result: {name}')
+            shapes.append((name, obj.sketch))
+
+    if not shapes:
+        elapsed = (time.time() - start_time) * 1000
+        return json.dumps({
+            'gltfBase64': '',
+            'parts': [],
+            'errors': [],
+            'warnings': ['No shapes found in the code output.'],
+            'executionTimeMs': round(elapsed),
+        })
+
+    # Build part metadata
+    parts_meta = []
+    shape_objects = []
+    for i, (name, shape) in enumerate(shapes):
+        try:
+            bb = shape.bounding_box()
+            bb_min = [bb.min.X, bb.min.Y, bb.min.Z]
+            bb_max = [bb.max.X, bb.max.Y, bb.max.Z]
+        except Exception:
+            bb_min = [0, 0, 0]
+            bb_max = [0, 0, 0]
+
+        try:
+            face_count = len(shape.faces())
+        except Exception:
+            face_count = 0
+
+        try:
+            vol = float(shape.volume) if hasattr(shape, 'volume') else None
+        except Exception:
+            vol = None
+
+        color = _PALETTE[i % len(_PALETTE)]
+        part_id = _index_to_letter_id(i)
+        display_name = _var_name_to_display(name)
+
+        parts_meta.append({
+            'id': part_id,
+            'name': display_name,
+            'color': color,
+            'boundingBox': {'min': bb_min, 'max': bb_max},
+            'faceCount': face_count,
+            'volume': vol,
+        })
+
+        # Apply color to shape for glTF export
+        try:
+            shape.color = Color(*[c for c in color])
+        except Exception:
+            pass
+
+        shape_objects.append(shape)
+
+    # Export combined glTF
+    linear_defl, angular_defl = _QUALITY_MAP.get(quality_level, _QUALITY_MAP['normal'])
+    gltf_base64 = ''
+
+    try:
+        if len(shape_objects) == 1:
+            assembly = shape_objects[0]
+        else:
+            assembly = Compound(children=shape_objects)
+
+        print(f'[export] Exporting glTF (linear_defl={linear_defl}, angular_defl={angular_defl})...')
+        export_gltf(
+            assembly,
+            '/tmp/output.glb',
+            binary=True,
+            linear_deflection=linear_defl,
+            angular_deflection=angular_defl,
+        )
+
+        with open('/tmp/output.glb', 'rb') as f:
+            gltf_bytes = f.read()
+        print(f'[export] glTF file size: {len(gltf_bytes)} bytes')
+        gltf_base64 = base64.b64encode(gltf_bytes).decode('ascii')
+    except Exception as e:
+        elapsed = (time.time() - start_time) * 1000
+        return json.dumps({
+            'gltfBase64': '',
+            'parts': parts_meta,
+            'errors': [{
+                'type': 'geometry',
+                'message': f'glTF export failed: {e}',
+                'line': None,
+                'column': None,
+            }],
+            'warnings': [],
+            'executionTimeMs': round(elapsed),
+        })
+
+    elapsed = (time.time() - start_time) * 1000
+    return json.dumps({
+        'gltfBase64': gltf_base64,
+        'parts': parts_meta,
+        'errors': [],
+        'warnings': [],
+        'executionTimeMs': round(elapsed),
+    })

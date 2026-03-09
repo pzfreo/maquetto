@@ -6,6 +6,50 @@ import { assembleContextText } from '../ai/context-assembler';
 import { base64ToUint8Array } from '../lib/base64';
 import type { CadEngine } from '@maquetto/api-types';
 
+/** Max screenshot dimension in pixels sent to AI vision models. */
+const SCREENSHOT_MAX_DIM = 512;
+
+/**
+ * Downscale a data URL image to fit within `maxDim` pixels on its longest side.
+ * Returns the resized image as a Uint8Array (PNG).
+ * Falls back to original bytes if resizing fails.
+ */
+async function downscaleDataUrl(dataUrl: string, maxDim: number): Promise<Uint8Array> {
+  const base64 = dataUrl.split(',')[1];
+  if (!base64) throw new Error('Invalid data URL');
+  const originalBytes = base64ToUint8Array(base64);
+
+  // Load the image to get its dimensions
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.onerror = reject;
+    el.src = dataUrl;
+  });
+
+  const { naturalWidth: w, naturalHeight: h } = img;
+  if (w <= maxDim && h <= maxDim) {
+    return originalBytes;
+  }
+
+  const scale = maxDim / Math.max(w, h);
+  const nw = Math.round(w * scale);
+  const nh = Math.round(h * scale);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = nw;
+  canvas.height = nh;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return originalBytes;
+
+  ctx.drawImage(img, 0, 0, nw, nh);
+  const resizedUrl = canvas.toDataURL('image/png');
+  const resizedBase64 = resizedUrl.split(',')[1];
+  if (!resizedBase64) return originalBytes;
+
+  return base64ToUint8Array(resizedBase64);
+}
+
 /**
  * A transport that never sends anything. Used when no AI provider is configured
  * to prevent useChat from POSTing to the default /api/chat endpoint.
@@ -66,7 +110,7 @@ export function useCADChat(engine: CadEngine | null) {
     },
   });
 
-  const sendWithContext = useCallback((text: string, options?: { includeScreenshot?: boolean }) => {
+  const sendWithContext = useCallback(async (text: string, options?: { includeScreenshot?: boolean }) => {
     if (!transport) {
       console.warn('[Chat] Send blocked — no provider configured');
       return;
@@ -86,22 +130,20 @@ export function useCADChat(engine: CadEngine | null) {
       ? `${text}\n\n---\n${context}`
       : text;
 
-    // Capture viewport screenshot via store-registered function and attach as a File.
+    // Capture viewport screenshot, downscale to reduce AI vision token usage,
+    // and attach as a File.
     let screenshotFiles: FileList | undefined;
     if (options?.includeScreenshot) {
       try {
         const capture = useAppStore.getState().captureScreenshot;
         const dataUrl = capture?.();
         if (dataUrl) {
-          const base64 = dataUrl.split(',')[1];
-          if (base64) {
-            const bytes = base64ToUint8Array(base64);
-            const file = new File([bytes], 'viewport.png', { type: 'image/png' });
-            const dt = new DataTransfer();
-            dt.items.add(file);
-            screenshotFiles = dt.files;
-            console.log('[Chat] Attaching viewport screenshot');
-          }
+          const bytes = await downscaleDataUrl(dataUrl, SCREENSHOT_MAX_DIM);
+          const file = new File([bytes], 'viewport.png', { type: 'image/png' });
+          const dt = new DataTransfer();
+          dt.items.add(file);
+          screenshotFiles = dt.files;
+          console.log(`[Chat] Attaching viewport screenshot (${bytes.byteLength} bytes)`);
         }
       } catch {
         // Canvas capture can fail due to tainted canvas or security restrictions
