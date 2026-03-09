@@ -2,6 +2,7 @@ import {
   convertToModelMessages,
   validateUIMessages,
 } from 'ai';
+import { base64ToUint8Array } from '../../lib/base64';
 
 // Structural type for the agent — avoids coupling to ToolLoopAgent's
 // deeply nested generics (ToolLoopAgent<CALL_OPTIONS, TOOLS, OUTPUT>).
@@ -97,13 +98,7 @@ export class DataUrlSafeChatTransport {
             /^data:([^;]+);base64,(.+)$/,
           );
           if (match) {
-            const base64 = match[2]!;
-            const binary = atob(base64);
-            const bytes = new Uint8Array(binary.length);
-            for (let i = 0; i < binary.length; i++) {
-              bytes[i] = binary.charCodeAt(i);
-            }
-            part.data = bytes;
+            part.data = base64ToUint8Array(match[2]!);
             if (!part.mediaType) {
               part.mediaType = match[1] ?? 'application/octet-stream';
             }

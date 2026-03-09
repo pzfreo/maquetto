@@ -3,6 +3,7 @@ import { useChat } from '@ai-sdk/react';
 import { useAppStore } from '../store';
 import { createTransport } from '../ai/provider-registry';
 import { assembleContextText } from '../ai/context-assembler';
+import { base64ToUint8Array } from '../lib/base64';
 import type { CadEngine } from '@maquetto/api-types';
 
 /**
@@ -94,11 +95,7 @@ export function useCADChat(engine: CadEngine | null) {
         if (dataUrl) {
           const base64 = dataUrl.split(',')[1];
           if (base64) {
-            const binary = atob(base64);
-            const bytes = new Uint8Array(binary.length);
-            for (let i = 0; i < binary.length; i++) {
-              bytes[i] = binary.charCodeAt(i);
-            }
+            const bytes = base64ToUint8Array(base64);
             const file = new File([bytes], 'viewport.png', { type: 'image/png' });
             const dt = new DataTransfer();
             dt.items.add(file);

@@ -326,6 +326,32 @@ self.onmessage = (e: MessageEvent<WorkerRequest>) => {
 };
 
 /**
+ * Shared Python sandbox setup — blocks js/pyodide modules and prepares
+ * a namespace with build123d + numpy pre-imported. Used by both
+ * EXECUTE_HELPER and EXPORT_HELPER to avoid code duplication.
+ */
+const SANDBOX_SETUP = `
+    import builtins as _builtins_mod
+    _original_import = _builtins_mod.__import__
+    _BLOCKED_MODULES = frozenset({
+        'js', 'pyodide', 'pyodide_js', 'pyodide_js._api',
+        'pyodide.http', 'pyodide.ffi', 'pyodide.code',
+    })
+    def _safe_import(name, *args, **kwargs):
+        if name in _BLOCKED_MODULES or name.startswith('pyodide.'):
+            raise ImportError(f"Module '{name}' is not available in the CAD sandbox")
+        return _original_import(name, *args, **kwargs)
+
+    namespace = {'__builtins__': __builtins__}
+    exec('from build123d import *', namespace)
+    exec('import numpy', namespace)
+    namespace['__builtins__'] = dict(vars(_builtins_mod))
+    namespace['__builtins__']['__import__'] = _safe_import
+
+    pre_exec_names = set(namespace.keys())
+`;
+
+/**
  * Python helper script for executing user code and exporting results.
  * Runs inside Pyodide. Scans for Shape objects, computes metadata,
  * tessellates and exports as glTF.
@@ -391,28 +417,8 @@ def _execute_and_export(code_str, quality_level):
 
     start_time = time.time()
 
-    # Prepare namespace with build123d pre-imported
-    # Block access to js/pyodide modules to prevent JavaScript interop exploits
-    import builtins as _builtins_mod
-    _original_import = _builtins_mod.__import__
-    _BLOCKED_MODULES = frozenset({
-        'js', 'pyodide', 'pyodide_js', 'pyodide_js._api',
-        'pyodide.http', 'pyodide.ffi', 'pyodide.code',
-    })
-    def _safe_import(name, *args, **kwargs):
-        if name in _BLOCKED_MODULES or name.startswith('pyodide.'):
-            raise ImportError(f"Module '{name}' is not available in the CAD sandbox")
-        return _original_import(name, *args, **kwargs)
-
-    namespace = {'__builtins__': __builtins__}
-    exec('from build123d import *', namespace)
-    exec('import numpy', namespace)
-    # Install the safe import into the user namespace
-    namespace['__builtins__'] = dict(vars(_builtins_mod))
-    namespace['__builtins__']['__import__'] = _safe_import
-
-    # Snapshot namespace keys before user code so we only scan user-created variables
-    pre_exec_names = set(namespace.keys())
+    # Set up sandboxed namespace with build123d + numpy
+${SANDBOX_SETUP}
 
     # Execute user code
     try:
@@ -595,25 +601,8 @@ def _export_to_format(code_str, fmt):
     import json
     import base64
 
-    # Execute user code in a fresh namespace
-    import builtins as _builtins_mod
-    _original_import = _builtins_mod.__import__
-    _BLOCKED_MODULES = frozenset({
-        'js', 'pyodide', 'pyodide_js', 'pyodide_js._api',
-        'pyodide.http', 'pyodide.ffi', 'pyodide.code',
-    })
-    def _safe_import(name, *args, **kwargs):
-        if name in _BLOCKED_MODULES or name.startswith('pyodide.'):
-            raise ImportError(f"Module '{name}' is not available in the CAD sandbox")
-        return _original_import(name, *args, **kwargs)
-
-    namespace = {'__builtins__': __builtins__}
-    exec('from build123d import *', namespace)
-    exec('import numpy', namespace)
-    namespace['__builtins__'] = dict(vars(_builtins_mod))
-    namespace['__builtins__']['__import__'] = _safe_import
-
-    pre_exec_names = set(namespace.keys())
+    # Set up sandboxed namespace with build123d + numpy
+${SANDBOX_SETUP}
 
     try:
         exec(code_str, namespace)
