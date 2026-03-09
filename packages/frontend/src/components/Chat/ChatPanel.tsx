@@ -140,14 +140,15 @@ export function ChatPanel({ onCompile, engine }: ChatPanelProps) {
   const waitingForCompileRef = useRef(false);
   const MAX_AUTO_RETRIES = 3;
 
-  // Detect tool activity in the current streaming message
+  // Detect tool activity in the current streaming message.
+  // Only show if the last message is an assistant message (not a stale
+  // result from before the user's latest prompt).
   const toolActivity = useMemo(() => {
     if (!isStreaming) return null;
-    const assistantMessages = messages.filter((m) => m.role === 'assistant');
-    const lastAssistant = assistantMessages[assistantMessages.length - 1];
-    if (!lastAssistant) return null;
+    const lastMessage = messages[messages.length - 1];
+    if (!lastMessage || lastMessage.role !== 'assistant') return null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return getToolActivity(lastAssistant.parts as ReadonlyArray<Record<string, any>>);
+    return getToolActivity(lastMessage.parts as ReadonlyArray<Record<string, any>>);
   }, [isStreaming, messages]);
 
   // Send pending messages from other panels (e.g. "Ask AI to fix" button)
@@ -378,7 +379,7 @@ export function ChatPanel({ onCompile, engine }: ChatPanelProps) {
               {toolActivity.hasError
                 ? `Code has errors — AI is fixing (attempt ${toolActivity.count})…`
                 : toolActivity.latestState === 'output-available'
-                  ? `Code compiled successfully ✓`
+                  ? `Code compiled successfully — AI is writing response…`
                   : `Testing code${toolActivity.count > 1 ? ` (attempt ${toolActivity.count})` : ''}…`}
             </span>
           </div>
