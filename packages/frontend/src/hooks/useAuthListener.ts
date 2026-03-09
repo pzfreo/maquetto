@@ -35,6 +35,10 @@ export function setPendingGoogleAI() {
   localStorage.setItem(PENDING_GOOGLE_AI_KEY, 'true');
 }
 
+export function clearPendingGoogleAI() {
+  localStorage.removeItem(PENDING_GOOGLE_AI_KEY);
+}
+
 /**
  * Auto-configure the AI provider if a pending Google AI flag is set
  * and we received a provider_token from the OAuth flow.
