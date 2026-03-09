@@ -48,8 +48,13 @@ export function useCADChat(engine: CadEngine | null) {
     [aiProvider, compileFn, customSystemPrompt],
   );
 
+  // Include provider type in the chat id so useChat reinitializes when the
+  // provider changes (e.g. from 'none' to 'google-oauth' during first-run).
+  // Without this, useChat keeps using the initial noopTransport.
+  const chatId = `cad-chat-${aiProvider.type}`;
+
   const chat = useChat({
-    id: 'cad-chat',
+    id: chatId,
     // DataUrlSafeChatTransport matches useChat's transport shape but uses
     // structural typing (AgentLike) that doesn't satisfy the SDK's exact
     // generic constraints. Cast required until Vercel exports a simpler type.
