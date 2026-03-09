@@ -68,7 +68,7 @@ packages/
 │   └── public/
 │       └── sw.js           # Service worker for WASM caching
 │
-└── api-proxy/        # Optional edge proxy for Anthropic CORS
+└── api-proxy/        # Reserved for future use (e.g. OpenAI CORS proxy)
 ```
 
 ## Tech Stack
@@ -251,26 +251,33 @@ pnpm --filter @maquetto/api-proxy dev
 7. **Cache aggressively** — Service worker caches all WASM. Second visit <5s to ready.
 8. **Test the boundaries** — Test API contracts, hooks, component behavior. Not Three.js internals or Pyodide's Python execution.
 
-## Prototype Scope
+## Features (Complete)
 
-### Build
 - Web Worker with Pyodide + OCP.wasm, progressive loading
 - CadEngine interface + Web Worker implementation
 - Service worker for WASM caching
 - Monaco editor with Python highlighting, Build123d completions, error markers
-- Three.js viewport with PBR rendering, part labels, part selection
-- AI chat with streaming, code blocks, Apply to Editor
-- Google Gemini (OAuth) + Anthropic Claude (BYOK + edge proxy)
+- Three.js viewport with PBR rendering, part labels, part selection, view cube
+- AI chat with streaming, tool-loop agent (test_code), thinking indicators
+- Google Gemini (OAuth + BYOK) + Anthropic Claude (BYOK), model selection
 - Viewport screenshot for AI vision context
-- First-run provider setup screen
+- First-run screen with BYOK-first flow (Gemini/Claude tabs)
+- Supabase auth (Google OAuth), cloud save/load with RLS
+- Python sandbox (blocked js/pyodide imports, network APIs)
+- Stop button for long-running compilations
+- Rename projects (editable title in toolbar, reflected in editor tab)
+- Import/export Python code to/from local files
+- Export to STL and STEP (filenames include project name + timestamp)
+- Credential validation on startup and provider change
+- Vercel Analytics
+- Version history with diff view
 - Tests for engine contract, hooks, components
 
-### Do NOT Build
-- File save/load or project management
-- Export to STL, STEP, or 3MF
-- User auth beyond AI provider auth
+## Current Phase
+
+### Do NOT Build (Yet)
 - Multiple files or editor tabs
 - Undo/redo
-- Settings beyond provider selection
-- Face/edge selection (part-level only)
+- Face/edge selection (part-level only for now)
 - Collaboration or sharing
+- OpenAI provider (blocked on CORS — no browser support)
