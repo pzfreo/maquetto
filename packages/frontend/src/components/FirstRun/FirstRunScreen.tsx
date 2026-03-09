@@ -95,8 +95,11 @@ export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
 
   const placeholder = byokProvider === 'gemini' ? 'AIza...' : 'sk-ant-api...';
   const keyHelpUrl = byokProvider === 'gemini'
-    ? 'aistudio.google.com'
-    : 'console.anthropic.com';
+    ? 'https://aistudio.google.com/apikey'
+    : 'https://platform.claude.com/';
+  const keyHelpLabel = byokProvider === 'gemini'
+    ? 'Google AI Studio'
+    : 'platform.claude.com';
 
   const tabStyle = (active: boolean) => ({
     flex: 1,
@@ -236,7 +239,7 @@ export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
               </button>
             </div>
             <p style={{ fontSize: '12px', color: '#666', margin: '10px 0 0 0', textAlign: 'left' }}>
-              Get a key from {keyHelpUrl}.
+              Get a key from <a href={keyHelpUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#4a9eff' }}>{keyHelpLabel}</a>.
               Stored locally in your browser, never sent to our servers.
             </p>
           </div>
