@@ -47,7 +47,7 @@ function hasImageAttachment(parts: ReadonlyArray<{ type: string; text?: string }
 
 /**
  * Extract code from the last successful test_code tool call in the message parts.
- * Fallback for when the AI doesn't include code in its text response.
+ * Preferred over text code blocks because this code is verified to compile.
  */
 function getCodeFromToolCalls(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -171,19 +171,22 @@ export function ChatPanel({ onCompile, engine }: ChatPanelProps) {
       if (!lastAssistant) return;
 
       const fullText = getMessageText(lastAssistant.parts);
-      const codeBlocks = parseCodeBlocks(fullText);
 
-      // Find the last Python code block from text
-      const pythonBlocks = codeBlocks.filter(
-        (b) => b.language === 'python' || b.language === 'py' || b.language === '',
-      );
-      const lastBlock = pythonBlocks[pythonBlocks.length - 1];
-
-      // Fallback: if no code block in text, extract from successful test_code tool call
+      // Prefer code from the last successful test_code tool call — it's verified
+      // to compile. Fall back to text code blocks if no tool call was made.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const toolCode = !lastBlock ? getCodeFromToolCalls(lastAssistant.parts as ReadonlyArray<Record<string, any>>) : null;
+      const toolCode = getCodeFromToolCalls(lastAssistant.parts as ReadonlyArray<Record<string, any>>);
 
-      const newCode = (lastBlock?.code ?? toolCode ?? '').trim();
+      let textCode: string | undefined;
+      if (!toolCode) {
+        const codeBlocks = parseCodeBlocks(fullText);
+        const pythonBlocks = codeBlocks.filter(
+          (b) => b.language === 'python' || b.language === 'py' || b.language === '',
+        );
+        textCode = pythonBlocks[pythonBlocks.length - 1]?.code;
+      }
+
+      const newCode = (toolCode ?? textCode ?? '').trim();
       if (!newCode) return;
 
       // Find the user prompt that triggered this response
@@ -349,8 +352,8 @@ export function ChatPanel({ onCompile, engine }: ChatPanelProps) {
             />
           ))}
 
-        {/* Tool activity indicator */}
-        {toolActivity && (
+        {/* Streaming activity indicator */}
+        {isStreaming && (
           <div
             style={{
               display: 'flex',
@@ -371,16 +374,18 @@ export function ChatPanel({ onCompile, engine }: ChatPanelProps) {
                 width: '8px',
                 height: '8px',
                 borderRadius: '50%',
-                background: toolActivity.hasError ? '#f4a836' : '#4a9eff',
+                background: toolActivity?.hasError ? '#f4a836' : '#4a9eff',
                 animation: 'pulse 1.5s ease-in-out infinite',
               }}
             />
             <span>
-              {toolActivity.hasError
-                ? `Code has errors — AI is fixing (attempt ${toolActivity.count})…`
-                : toolActivity.latestState === 'output-available'
-                  ? `Code compiled successfully — AI is writing response…`
-                  : `Testing code${toolActivity.count > 1 ? ` (attempt ${toolActivity.count})` : ''}…`}
+              {!toolActivity
+                ? 'AI is thinking…'
+                : toolActivity.hasError
+                  ? `Code has errors — AI is fixing (attempt ${toolActivity.count})…`
+                  : toolActivity.latestState === 'output-available'
+                    ? `Code compiled successfully — AI is writing response…`
+                    : `Testing code${toolActivity.count > 1 ? ` (attempt ${toolActivity.count})` : ''}…`}
             </span>
           </div>
         )}
