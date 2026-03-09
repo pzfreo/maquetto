@@ -15,7 +15,7 @@
 </head>
 <body>
   <h1>Privacy Policy</h1>
-  <p class="updated">Last updated: 7 March 2026</p>
+  <p class="updated">Last updated: 9 March 2026</p>
 
   <h2>What Maquetto Is</h2>
   <p>Maquetto is a browser-based CAD IDE that runs entirely in your browser. Your CAD code is executed locally using WebAssembly — it is not sent to our servers.</p>
@@ -30,22 +30,32 @@
   <p>If you use the cloud save feature, the CAD code you choose to save is stored in our database associated with your account.</p>
 
   <h2>AI Features</h2>
-  <p>When you use AI chat features, your messages and any viewport screenshots you attach are sent directly from your browser to the AI provider you have configured (Google Gemini or Anthropic Claude). These requests go directly to the provider — they do not pass through our servers. They are governed by the respective provider's privacy policy:</p>
-  <ul>
-    <li><a href="https://policies.google.com/privacy">Google Privacy Policy</a></li>
-    <li><a href="https://www.anthropic.com/privacy">Anthropic Privacy Policy</a></li>
-  </ul>
+  <p>When you use AI chat features via Google Gemini, your messages and the CAD context (code, part metadata, and any viewport screenshots you attach) are sent to Google using the OAuth 2.0 <code>generative-language.tuning</code> scope. This data is used solely to generate CAD code for your project and is governed by <a href="https://policies.google.com/privacy">Google's privacy policy</a> and <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>.</p>
+  <p>When you use AI chat features via Anthropic Claude, your messages and CAD context are sent directly from your browser to Anthropic using your own API key. These requests are governed by <a href="https://www.anthropic.com/privacy">Anthropic's privacy policy</a>.</p>
+  <p>In both cases, AI requests go directly from your browser to the provider — they do not pass through Maquetto's servers.</p>
 
   <h2>API Key Storage</h2>
   <p><strong>Your API keys are stored only in your browser's local storage.</strong> They are never transmitted to or stored on our servers. When you make an AI request, your browser sends the API key directly to the provider (Google or Anthropic) — Maquetto's servers are not involved in this communication.</p>
 
+  <h2>Google OAuth Limited Use Disclosure</h2>
+  <p>Maquetto's use and transfer to any other app of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+  <p>Specifically:</p>
+  <ul>
+    <li>We use the <code>generative-language.tuning</code> scope only to allow the user to generate CAD code via the Google Gemini API.</li>
+    <li>We do not use this data to train AI models.</li>
+    <li>We do not transfer this data to third parties, except as necessary to provide the AI features explicitly requested by the user.</li>
+    <li>We do not use this data for advertising purposes.</li>
+  </ul>
+
   <h2>Data We Do Not Collect</h2>
   <ul>
-    <li>We do not use analytics or tracking scripts</li>
     <li>We do not sell or share your data with third parties</li>
     <li>We do not store your AI conversations on our servers</li>
     <li>We do not store your Anthropic API key on our servers</li>
   </ul>
+
+  <h2>Analytics</h2>
+  <p>We use <a href="https://vercel.com/docs/analytics">Vercel Analytics</a> to collect anonymous, aggregated usage data such as page views and web vitals (performance metrics). This data does not include personal information, AI conversations, or CAD code. See <a href="https://vercel.com/docs/analytics/privacy-policy">Vercel's Analytics privacy policy</a> for details.</p>
 
   <h2>Local Storage</h2>
   <p>Maquetto stores preferences, editor content, and API keys in your browser's local storage. This data never leaves your device unless you explicitly use cloud save or AI features.</p>
