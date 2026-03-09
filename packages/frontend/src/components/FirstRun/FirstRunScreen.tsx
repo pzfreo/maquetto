@@ -97,7 +97,7 @@ export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
           textAlign: 'center',
         }}
       >
-        <img src="/logo.svg" alt="" width={64} height={64} style={{ marginBottom: '16px' }} />
+        <img src="/logo.svg" alt="Maquetto" width={96} height={96} style={{ marginBottom: '20px' }} />
         <h1
           style={{
             fontSize: '36px',
