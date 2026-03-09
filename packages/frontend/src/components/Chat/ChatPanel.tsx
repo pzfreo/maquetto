@@ -159,50 +159,43 @@ export function ChatPanel({ onCompile, engine }: ChatPanelProps) {
     }
   }, [pendingChatMessage, isConfigured, isStreaming, sendMessage, setPendingChatMessage]);
 
-  // Auto-apply: when AI finishes responding, extract code and apply to editor
+  // Auto-apply fallback: when AI finishes responding, if test_code wasn't used
+  // (e.g. AI included code only in text), extract it and apply to editor.
+  // When test_code IS used, it already updates the editor and saves a version.
   useEffect(() => {
     const wasStreaming = prevStatusRef.current === 'streaming' || prevStatusRef.current === 'submitted';
     prevStatusRef.current = status;
 
     if (wasStreaming && status === 'ready') {
-      // Find the last assistant message
       const assistantMessages = messages.filter((m) => m.role === 'assistant');
       const lastAssistant = assistantMessages[assistantMessages.length - 1];
       if (!lastAssistant) return;
 
-      const fullText = getMessageText(lastAssistant.parts);
-
-      // Prefer code from the last successful test_code tool call — it's verified
-      // to compile. Fall back to text code blocks if no tool call was made.
+      // If test_code was used, the code is already applied — skip
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const toolCode = getCodeFromToolCalls(lastAssistant.parts as ReadonlyArray<Record<string, any>>);
+      if (toolCode) return;
 
-      let textCode: string | undefined;
-      if (!toolCode) {
-        const codeBlocks = parseCodeBlocks(fullText);
-        const pythonBlocks = codeBlocks.filter(
-          (b) => b.language === 'python' || b.language === 'py' || b.language === '',
-        );
-        textCode = pythonBlocks[pythonBlocks.length - 1]?.code;
-      }
-
-      const newCode = (toolCode ?? textCode ?? '').trim();
+      // Fallback: extract from text code blocks
+      const fullText = getMessageText(lastAssistant.parts);
+      const codeBlocks = parseCodeBlocks(fullText);
+      const pythonBlocks = codeBlocks.filter(
+        (b) => b.language === 'python' || b.language === 'py' || b.language === '',
+      );
+      const lastBlock = pythonBlocks[pythonBlocks.length - 1];
+      const newCode = lastBlock?.code.trim();
       if (!newCode) return;
 
-      // Find the user prompt that triggered this response
       const userMessages = messages.filter((m) => m.role === 'user');
       const lastUserMsg = userMessages[userMessages.length - 1];
       const prompt = lastUserMsg ? getMessageText(lastUserMsg.parts) : null;
-      // Strip context suffix appended by sendWithContext
       const cleanPrompt = prompt?.split('\n\n---\n')[0] ?? null;
 
-      // Save current code as a version before replacing
       const currentCode = useAppStore.getState().code;
       const summary = extractSummary(fullText);
       saveVersion(currentCode, 'ai', summary, cleanPrompt);
 
-      // Apply the new code, clear dirty flag (version already saved), and compile
-      console.log(`[Chat] Auto-applying code (${newCode.length} chars)`);
+      console.log(`[Chat] Auto-applying code from text (${newCode.length} chars)`);
       setCode(newCode);
       useAppStore.getState().setDirty(false);
       waitingForCompileRef.current = true;

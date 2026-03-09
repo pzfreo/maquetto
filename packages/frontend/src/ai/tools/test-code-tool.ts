@@ -47,7 +47,17 @@ export function createTestCodeTool(compileFn: CompileFn) {
         console.log('[test_code] Success:', result.parts.length, 'parts');
 
         // Push the result into the store so the viewport renders the new model
-        useAppStore.getState().setCompileResult(result);
+        // and the editor shows the tested code immediately (don't wait for
+        // streaming to finish — the AI might not repeat the code in its text).
+        const store = useAppStore.getState();
+        const previousCode = store.code;
+        store.setCompileResult(result);
+        store.setCode(code);
+        store.setDirty(false);
+        // Save a version so the user can revert
+        if (code !== previousCode) {
+          store.saveVersion(previousCode, 'ai', 'AI code update', null);
+        }
 
         return {
           success: true as const,
