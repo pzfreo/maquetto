@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '../../store';
-import { signInWithGoogle, signInWithGoogleAI } from '../../lib/auth-actions';
+import { signInWithGoogleAI } from '../../lib/auth-actions';
 import { setPendingGoogleAI, clearPendingGoogleAI } from '../../hooks/useAuthListener';
 
 const FIRST_RUN_KEY = 'maquetto:first-run-complete';
@@ -32,12 +32,13 @@ interface FirstRunScreenProps {
   onComplete: () => void;
 }
 
+type BYOKProvider = 'gemini' | 'claude';
+
 export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
   const setAIProvider = useAppStore((s) => s.setAIProvider);
-  const [anthropicKey, setAnthropicKey] = useState('');
-  const [showClaudeFlow, setShowClaudeFlow] = useState(false);
+  const [apiKey, setApiKey] = useState('');
+  const [byokProvider, setByokProvider] = useState<BYOKProvider>('gemini');
   const [connectingGemini, setConnectingGemini] = useState(false);
-  const [signingInForClaude, setSigningInForClaude] = useState(false);
 
   // Safety timeout: if pending flag is set but provider never arrives,
   // clear the flag after 60s so the user isn't stuck on this screen.
@@ -53,10 +54,21 @@ export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
     return () => clearTimeout(timeout);
   }, [connectingGemini]);
 
+  const handleBYOKConnect = () => {
+    const key = apiKey.trim();
+    if (!key) return;
+    if (byokProvider === 'gemini') {
+      setAIProvider({ type: 'google', credential: key });
+    } else {
+      setAIProvider({ type: 'anthropic', credential: key });
+    }
+    completeFirstRun();
+    onComplete();
+  };
+
   const handleGoogleGemini = async () => {
     setConnectingGemini(true);
     try {
-      // Set flag so auth listener auto-configures AI when token arrives
       setPendingGoogleAI();
       await signInWithGoogleAI();
       completeFirstRun();
@@ -64,24 +76,6 @@ export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
       clearPendingGoogleAI();
       setConnectingGemini(false);
     }
-  };
-
-  const handleGoogleForClaude = async () => {
-    setSigningInForClaude(true);
-    try {
-      await signInWithGoogle();
-      completeFirstRun();
-      // After sign-in, show the Claude key input
-    } catch {
-      setSigningInForClaude(false);
-    }
-  };
-
-  const handleAnthropicKey = () => {
-    if (!anthropicKey.trim()) return;
-    setAIProvider({ type: 'anthropic', credential: anthropicKey.trim() });
-    completeFirstRun();
-    onComplete();
   };
 
   const handleSkip = () => {
@@ -98,6 +92,24 @@ export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
       <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.166 6.656 3.58 9 3.58Z" fill={fill} opacity="0.9"/>
     </svg>
   );
+
+  const placeholder = byokProvider === 'gemini' ? 'AIza...' : 'sk-ant-api...';
+  const keyHelpUrl = byokProvider === 'gemini'
+    ? 'aistudio.google.com'
+    : 'console.anthropic.com';
+
+  const tabStyle = (active: boolean) => ({
+    flex: 1,
+    padding: '10px 16px',
+    borderRadius: '8px 8px 0 0',
+    border: 'none',
+    borderBottom: active ? '2px solid #4a9eff' : '2px solid transparent',
+    background: active ? '#1e1e3a' : 'transparent',
+    color: active ? '#fff' : '#888',
+    fontSize: '14px',
+    fontWeight: active ? 600 : 400 as const,
+    cursor: 'pointer',
+  });
 
   return (
     <div
@@ -135,7 +147,7 @@ export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
           style={{
             fontSize: '15px',
             color: '#aaa',
-            marginBottom: '40px',
+            marginBottom: '36px',
             lineHeight: 1.6,
           }}
         >
@@ -146,180 +158,152 @@ export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
           and use AI to modify designs through natural language.
         </p>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {/* Option 1: Google + Gemini (one click, everything works) */}
-          <button
-            onClick={handleGoogleGemini}
-            disabled={connectingGemini}
+        {/* Primary: BYOK card */}
+        <div
+          style={{
+            borderRadius: '12px',
+            border: '1px solid #333',
+            background: '#141428',
+            overflow: 'hidden',
+            marginBottom: '20px',
+          }}
+        >
+          <h2
             style={{
-              padding: '14px 24px',
-              borderRadius: '8px',
-              border: 'none',
-              background: connectingGemini ? '#333' : '#4285f4',
-              color: connectingGemini ? '#888' : '#fff',
-              fontSize: '15px',
+              fontSize: '14px',
               fontWeight: 500,
-              cursor: connectingGemini ? 'not-allowed' : 'pointer',
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '10px',
+              color: '#ccc',
+              margin: 0,
+              padding: '16px 16px 12px',
             }}
           >
-            {googleIcon('#fff')}
-            {connectingGemini ? 'Connecting...' : 'Sign in with Google + Gemini AI'}
-          </button>
-          <p style={{ fontSize: '11px', color: '#666', margin: '0' }}>
-            One sign-in for cloud save and AI. No API key needed.
-          </p>
+            Connect your AI
+          </h2>
 
-          {/* Divider */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              margin: '4px 0',
-            }}
-          >
-            <div style={{ flex: 1, height: '1px', background: '#333' }} />
-            <span style={{ fontSize: '12px', color: '#666' }}>or</span>
-            <div style={{ flex: 1, height: '1px', background: '#333' }} />
+          {/* Provider tabs */}
+          <div style={{ display: 'flex', padding: '0 16px' }}>
+            <button
+              onClick={() => { setByokProvider('gemini'); setApiKey(''); }}
+              style={tabStyle(byokProvider === 'gemini')}
+            >
+              Google Gemini
+            </button>
+            <button
+              onClick={() => { setByokProvider('claude'); setApiKey(''); }}
+              style={tabStyle(byokProvider === 'claude')}
+            >
+              Anthropic Claude
+            </button>
           </div>
 
-          {/* Option 2: Google + Claude */}
-          {!showClaudeFlow ? (
-            <>
-              <button
-                onClick={() => setShowClaudeFlow(true)}
+          {/* API key input */}
+          <div style={{ padding: '16px' }}>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder={placeholder}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleBYOKConnect(); }}
                 style={{
-                  padding: '12px 24px',
+                  flex: 1,
+                  padding: '12px 14px',
                   borderRadius: '8px',
-                  border: '1px solid #d97706',
-                  background: 'transparent',
-                  color: '#d97706',
+                  border: '1px solid #444',
+                  background: '#0d0d1a',
+                  color: '#e0e0e0',
+                  fontSize: '14px',
+                  fontFamily: 'monospace',
+                  outline: 'none',
+                }}
+              />
+              <button
+                onClick={handleBYOKConnect}
+                disabled={!apiKey.trim()}
+                style={{
+                  padding: '12px 20px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: apiKey.trim() ? '#4a9eff' : '#333',
+                  color: apiKey.trim() ? '#fff' : '#888',
                   fontSize: '14px',
                   fontWeight: 500,
-                  cursor: 'pointer',
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '10px',
+                  cursor: apiKey.trim() ? 'pointer' : 'not-allowed',
+                  flexShrink: 0,
                 }}
               >
-                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                  <rect width="18" height="18" rx="4" fill="#d97706"/>
-                  <text x="9" y="14" textAnchor="middle" fill="#fff" fontSize="12" fontWeight="bold">A</text>
-                </svg>
-                Sign in with Google + Claude AI
+                Go
               </button>
-              <p style={{ fontSize: '11px', color: '#666', margin: '0' }}>
-                Cloud save via Google, AI powered by Anthropic Claude.
-              </p>
-            </>
-          ) : (
-            <div
-              style={{
-                padding: '16px',
-                borderRadius: '8px',
-                border: '1px solid #d97706',
-                background: '#1a1a2e',
-              }}
-            >
-              <p style={{ fontSize: '13px', color: '#ccc', margin: '0 0 12px 0', textAlign: 'left' }}>
-                Step 1: Sign in with Google for cloud save
-              </p>
-              <button
-                onClick={handleGoogleForClaude}
-                disabled={signingInForClaude}
-                style={{
-                  padding: '10px 16px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  background: signingInForClaude ? '#333' : '#4285f4',
-                  color: signingInForClaude ? '#888' : '#fff',
-                  fontSize: '13px',
-                  cursor: signingInForClaude ? 'not-allowed' : 'pointer',
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  marginBottom: '12px',
-                }}
-              >
-                {googleIcon('#fff')}
-                {signingInForClaude ? 'Signing in...' : 'Sign in with Google'}
-              </button>
-
-              <p style={{ fontSize: '13px', color: '#ccc', margin: '0 0 8px 0', textAlign: 'left' }}>
-                Step 2: Enter your Claude API key
-              </p>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <input
-                  type="password"
-                  value={anthropicKey}
-                  onChange={(e) => setAnthropicKey(e.target.value)}
-                  placeholder="sk-ant-api..."
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleAnthropicKey(); }}
-                  style={{
-                    flex: 1,
-                    padding: '10px 14px',
-                    borderRadius: '6px',
-                    border: '1px solid #d97706',
-                    background: '#0d0d1a',
-                    color: '#e0e0e0',
-                    fontSize: '13px',
-                    fontFamily: 'monospace',
-                    outline: 'none',
-                  }}
-                />
-                <button
-                  onClick={handleAnthropicKey}
-                  disabled={!anthropicKey.trim()}
-                  style={{
-                    padding: '10px 16px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    background: anthropicKey.trim() ? '#d97706' : '#333',
-                    color: anthropicKey.trim() ? '#fff' : '#888',
-                    fontSize: '13px',
-                    cursor: anthropicKey.trim() ? 'pointer' : 'not-allowed',
-                    flexShrink: 0,
-                  }}
-                >
-                  Connect
-                </button>
-              </div>
-              <p style={{ fontSize: '11px', color: '#666', margin: '8px 0 0 0', textAlign: 'left' }}>
-                Get a key from console.anthropic.com. Stored locally, never sent to our servers.
-              </p>
             </div>
-          )}
-
-          <p style={{ fontSize: '11px', color: '#666', margin: '4px 0 0 0', lineHeight: 1.5 }}>
-            <a href="/privacy.html" target="_blank" style={{ color: '#4a9eff' }}>Privacy policy</a>
-          </p>
-
-          {/* Skip */}
-          <button
-            onClick={handleSkip}
-            style={{
-              marginTop: '12px',
-              padding: '8px',
-              background: 'transparent',
-              border: 'none',
-              color: '#666',
-              fontSize: '13px',
-              cursor: 'pointer',
-              textDecoration: 'underline',
-            }}
-          >
-            Skip for now — use editor only
-          </button>
+            <p style={{ fontSize: '12px', color: '#666', margin: '10px 0 0 0', textAlign: 'left' }}>
+              Get a key from {keyHelpUrl}.
+              Stored locally in your browser, never sent to our servers.
+            </p>
+          </div>
         </div>
+
+        {/* Secondary: Google + Gemini OAuth */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            margin: '0 0 16px',
+          }}
+        >
+          <div style={{ flex: 1, height: '1px', background: '#333' }} />
+          <span style={{ fontSize: '12px', color: '#666' }}>or</span>
+          <div style={{ flex: 1, height: '1px', background: '#333' }} />
+        </div>
+
+        <button
+          onClick={handleGoogleGemini}
+          disabled={connectingGemini}
+          style={{
+            padding: '12px 24px',
+            borderRadius: '8px',
+            border: '1px solid #444',
+            background: 'transparent',
+            color: connectingGemini ? '#888' : '#ccc',
+            fontSize: '14px',
+            fontWeight: 500,
+            cursor: connectingGemini ? 'not-allowed' : 'pointer',
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '10px',
+          }}
+        >
+          {googleIcon('#ccc')}
+          {connectingGemini ? 'Connecting...' : 'Sign in with Google + Gemini AI'}
+        </button>
+        <p style={{ fontSize: '11px', color: '#555', margin: '8px 0 0 0' }}>
+          One-click sign-in for free Gemini AI and cloud save. No API key needed.
+        </p>
+
+        <p style={{ fontSize: '11px', color: '#666', margin: '16px 0 0 0', lineHeight: 1.5 }}>
+          <a href="/privacy.html" target="_blank" style={{ color: '#4a9eff' }}>Privacy policy</a>
+          {' · '}
+          Sign in with Google anytime later for cloud save.
+        </p>
+
+        {/* Skip */}
+        <button
+          onClick={handleSkip}
+          style={{
+            marginTop: '16px',
+            padding: '8px',
+            background: 'transparent',
+            border: 'none',
+            color: '#555',
+            fontSize: '13px',
+            cursor: 'pointer',
+            textDecoration: 'underline',
+          }}
+        >
+          Skip — use editor only
+        </button>
       </div>
     </div>
   );
