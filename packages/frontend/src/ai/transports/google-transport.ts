@@ -94,20 +94,21 @@ export function createGoogleTransport(
 
   const tools = { test_code: createTestCodeTool(compileFn) };
 
-  // Track whether the last test_code call failed so we can force a retry
-  let lastTestFailed = true;
+  // Track whether the last test_code call failed so we can force a retry.
+  // Starts false — the AI decides whether code changes are needed.
+  let lastTestFailed = false;
 
   const agent = new ToolLoopAgent({
     model: google(resolvedModel),
     instructions: systemPrompt,
     tools,
     stopWhen: stepCountIs(6),
-    // Force tool use on step 0 (initial test) and whenever the previous
-    // test_code call returned errors, so the AI must fix and retry rather
-    // than presenting broken code.
-    prepareStep({ stepNumber }: { stepNumber: number }) {
-      const force = stepNumber === 0 || lastTestFailed;
-      return { toolChoice: force ? ('required' as const) : ('auto' as const) };
+    // Only force tool use when the previous test_code call returned errors,
+    // so the AI must fix and retry rather than presenting broken code.
+    // On step 0 we use 'auto' — the AI decides whether code changes are
+    // needed (conversational messages like "thanks" don't need code).
+    prepareStep() {
+      return { toolChoice: lastTestFailed ? ('required' as const) : ('auto' as const) };
     },
     onStepFinish({ stepNumber, finishReason, toolCalls, toolResults }) {
       console.log(`[Google] Step ${stepNumber} finished: reason=${finishReason}, toolCalls=${toolCalls.length}, toolResults=${toolResults.length}`);
