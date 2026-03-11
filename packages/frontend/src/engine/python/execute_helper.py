@@ -1,3 +1,4 @@
+import ast
 import json
 import base64
 import time
@@ -47,6 +48,60 @@ def _var_name_to_display(name):
     if len(name) <= 1 or name.lower() in _GENERIC_NAMES:
         return None
     return ' '.join(word.capitalize() for word in name.split('_'))
+
+def _find_intermediate_vars(code_str):
+    """Identify variables consumed by later CAD operations (boolean ops, extrusions).
+
+    A variable is intermediate if its last use as an operand in + / - or as the
+    first argument to extrude/revolve/sweep/loft occurs AFTER its last assignment.
+    Variables that are consumed and reassigned on the same line (e.g. turner = turner - slot)
+    are kept because the final value is the result, not the consumed input.
+    """
+    try:
+        tree = ast.parse(code_str)
+    except SyntaxError:
+        return set()
+
+    last_assigned = {}
+    last_consumed = {}
+
+    for node in ast.walk(tree):
+        line = getattr(node, 'lineno', 0)
+
+        # Track assignments
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name):
+                    last_assigned[target.id] = max(last_assigned.get(target.id, 0), line)
+        elif isinstance(node, ast.AugAssign) and isinstance(node.target, ast.Name):
+            last_assigned[node.target.id] = max(last_assigned.get(node.target.id, 0), line)
+
+        # Boolean ops: a + b, a - b (union, cut)
+        if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Add, ast.Sub)):
+            for operand in (node.left, node.right):
+                if isinstance(operand, ast.Name):
+                    last_consumed[operand.id] = max(last_consumed.get(operand.id, 0), line)
+
+        # Augmented boolean: a += b, a -= b
+        if isinstance(node, ast.AugAssign) and isinstance(node.op, (ast.Add, ast.Sub)):
+            if isinstance(node.value, ast.Name):
+                last_consumed[node.value.id] = max(last_consumed.get(node.value.id, 0), line)
+
+        # Shape-consuming functions: extrude(sketch, ...), revolve(sketch, ...), etc.
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            if node.func.id in ('extrude', 'revolve', 'sweep', 'loft'):
+                if node.args and isinstance(node.args[0], ast.Name):
+                    last_consumed[node.args[0].id] = max(
+                        last_consumed.get(node.args[0].id, 0), line)
+
+    intermediates = set()
+    for var_name, consume_line in last_consumed.items():
+        assign_line = last_assigned.get(var_name, 0)
+        if consume_line > assign_line:
+            intermediates.add(var_name)
+
+    return intermediates
+
 
 def _execute_and_export(code_str, quality_level):
     """Execute user code, find shapes, export glTF + metadata as JSON string."""
@@ -126,6 +181,16 @@ def _execute_and_export(code_str, quality_level):
         elif hasattr(obj, 'sketch') and isinstance(getattr(obj, 'sketch', None), (Shape, Sketch)):
             print(f'[export] Found BuildSketch result: {name}')
             shapes.append((name, obj.sketch))
+
+    # Filter out intermediate construction variables (consumed by boolean ops / extrusions)
+    intermediate_vars = _find_intermediate_vars(code_str)
+    if intermediate_vars:
+        filtered = [(n, o) for n, o in shapes if n not in intermediate_vars]
+        hidden = [n for n, _ in shapes if n in intermediate_vars]
+        if hidden:
+            print(f'[export] Hidden intermediate shapes: {", ".join(hidden)}')
+        if filtered:
+            shapes = filtered
 
     if not shapes:
         elapsed = (time.time() - start_time) * 1000

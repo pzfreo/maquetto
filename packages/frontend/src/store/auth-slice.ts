@@ -5,7 +5,11 @@ import { supabase } from '../lib/supabase';
 const REFRESH_TOKEN_KEY = 'maquetto:provider-refresh-token';
 
 function loadProviderRefreshToken(): string | null {
-  return localStorage.getItem(REFRESH_TOKEN_KEY);
+  try {
+    return localStorage.getItem(REFRESH_TOKEN_KEY);
+  } catch {
+    return null;
+  }
 }
 
 export const createAuthSlice: StateCreator<AppStore, [], [], AuthSlice> = (set, get) => ({
