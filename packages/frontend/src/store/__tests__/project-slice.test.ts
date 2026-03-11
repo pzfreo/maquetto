@@ -42,7 +42,7 @@ describe('ProjectSlice', () => {
     const project = useAppStore.getState().currentProject;
     expect(project).not.toBeNull();
     expect(project?.title).toBe('My Widget');
-    expect(project?.id).toBeTruthy();
+    expect(project?.id).toBe(''); // empty until server assigns a real ID on save
     expect(project?.code).toBe('from build123d import *');
   });
 
