@@ -97,7 +97,7 @@ export function Layout({ onCompile, onStop, onRetryEngine, engine }: LayoutProps
             </button>
           ))}
         </nav>
-        <ProjectListModal isOpen={projectsOpen} onClose={() => setProjectsOpen(false)} />
+        <ProjectListModal isOpen={projectsOpen} onClose={() => setProjectsOpen(false)} onCompile={onCompile} />
       </div>
     );
   }
@@ -131,7 +131,7 @@ export function Layout({ onCompile, onStop, onRetryEngine, engine }: LayoutProps
         <span className="layout-footer-sep">·</span>
         <a href="/terms.html" target="_blank" rel="noopener noreferrer">Terms</a>
       </footer>
-      <ProjectListModal isOpen={projectsOpen} onClose={() => setProjectsOpen(false)} />
+      <ProjectListModal isOpen={projectsOpen} onClose={() => setProjectsOpen(false)} onCompile={onCompile} />
     </div>
   );
 }
