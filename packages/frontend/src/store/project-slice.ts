@@ -15,7 +15,7 @@ export const createProjectSlice: StateCreator<AppStore, [], [], ProjectSlice> = 
       currentProject: state.currentProject
         ? { ...state.currentProject, title }
         : {
-            id: crypto.randomUUID(),
+            id: '',
             userId: '',
             title,
             code: state.code,
