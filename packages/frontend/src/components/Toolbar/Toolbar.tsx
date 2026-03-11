@@ -156,10 +156,11 @@ export function Toolbar({ onCompile, onStop, onRetryEngine, engine, onOpenProjec
         const name = file.name.replace(/\.py$/i, '').replace(/_/g, ' ');
         useAppStore.getState().updateProjectTitle(name);
       }
+      onCompile?.();
     };
     reader.readAsText(file);
     e.target.value = '';
-  }, [currentProject]);
+  }, [currentProject, onCompile]);
 
   const handleTitleSubmit = useCallback(() => {
     setEditingTitle(false);

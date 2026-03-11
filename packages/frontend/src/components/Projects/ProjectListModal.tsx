@@ -5,9 +5,10 @@ import { useProjects } from '../../hooks/useProjects';
 interface ProjectListModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onCompile?: () => void;
 }
 
-export function ProjectListModal({ isOpen, onClose }: ProjectListModalProps) {
+export function ProjectListModal({ isOpen, onClose, onCompile }: ProjectListModalProps) {
   const projectList = useAppStore((s) => s.projectList);
   const projectLoading = useAppStore((s) => s.projectLoading);
   const currentProject = useAppStore((s) => s.currentProject);
@@ -117,6 +118,7 @@ export function ProjectListModal({ isOpen, onClose }: ProjectListModalProps) {
                   onClick={() => {
                     openProject(project);
                     onClose();
+                    onCompile?.();
                   }}
                   style={{
                     padding: '4px 12px',
