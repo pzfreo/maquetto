@@ -23,13 +23,21 @@ function loadAIProvider(): AIProviderConfig {
 }
 
 function loadQualityLevel(): QualityLevel {
-  const stored = localStorage.getItem(STORAGE_KEYS.qualityLevel);
-  if (stored === 'draft' || stored === 'normal' || stored === 'high') return stored;
+  try {
+    const stored = localStorage.getItem(STORAGE_KEYS.qualityLevel);
+    if (stored === 'draft' || stored === 'normal' || stored === 'high') return stored;
+  } catch {
+    // localStorage unavailable (e.g. in tests)
+  }
   return 'normal';
 }
 
 function loadCustomSystemPrompt(): string | null {
-  return localStorage.getItem(STORAGE_KEYS.customSystemPrompt) || null;
+  try {
+    return localStorage.getItem(STORAGE_KEYS.customSystemPrompt) || null;
+  } catch {
+    return null;
+  }
 }
 
 export const createSettingsSlice: StateCreator<AppStore, [], [], SettingsSlice> = (set) => ({
