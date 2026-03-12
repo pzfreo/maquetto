@@ -116,9 +116,11 @@ export function sanitizeToolMessagePairs(messages: any[]): void {
  */
 export class DataUrlSafeChatTransport {
   private agent: AgentLike;
+  private onBeforeStream?: () => void;
 
-  constructor({ agent }: { agent: AgentLike }) {
+  constructor({ agent, onBeforeStream }: { agent: AgentLike; onBeforeStream?: () => void }) {
     this.agent = agent;
+    this.onBeforeStream = onBeforeStream;
   }
 
   async sendMessages({
@@ -198,15 +200,33 @@ export class DataUrlSafeChatTransport {
       }
     }
 
+    this.onBeforeStream?.();
     console.log(`[Transport] Streaming to agent with ${modelMessages.length} messages`);
+
+    // Combine user abort signal with a 2-minute timeout to prevent
+    // the chat from hanging indefinitely if the API stops responding.
+    const STREAM_TIMEOUT_MS = 120_000;
+    const timeoutController = new AbortController();
+    const timer = setTimeout(() => {
+      console.warn('[Transport] Stream timed out after 2 minutes');
+      timeoutController.abort(new Error('AI response timed out after 2 minutes'));
+    }, STREAM_TIMEOUT_MS);
+
+    // Combine: abort if either the user clicks Stop OR the timeout fires
+    const combinedSignal = abortSignal
+      ? AbortSignal.any([abortSignal, timeoutController.signal])
+      : timeoutController.signal;
+
     try {
       const result = await this.agent.stream({
         prompt: modelMessages,
-        abortSignal,
+        abortSignal: combinedSignal,
       });
+      clearTimeout(timer);
       console.log('[Transport] Agent stream started, converting to UI stream');
       return result.toUIMessageStream();
     } catch (err) {
+      clearTimeout(timer);
       console.error('[Transport] Agent stream failed:', err);
       throw err;
     }
