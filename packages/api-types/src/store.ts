@@ -129,6 +129,7 @@ export interface VersionHistorySlice {
   readonly selectedVersionId: string | null;
   readonly isDiffExpanded: boolean;
   saveVersion: (code: string, source: VersionSource, summary: string, prompt: string | null) => void;
+  updateLatestVersionSummary: (summary: string, prompt: string | null) => void;
   selectVersion: (id: string | null) => void;
   revertToVersion: (id: string) => void;
   setDiffExpanded: (expanded: boolean) => void;
