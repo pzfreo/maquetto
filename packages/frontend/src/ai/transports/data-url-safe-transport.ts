@@ -25,7 +25,7 @@ interface AgentLike {
  * Check if a model message contains tool-call parts.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function hasToolCalls(msg: any): boolean {
+export function hasToolCalls(msg: any): boolean {
   if (msg.role !== 'assistant' || !Array.isArray(msg.content)) return false;
   return msg.content.some(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -46,7 +46,7 @@ function hasToolCalls(msg: any): boolean {
  * Mutates the array in place.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function sanitizeToolMessagePairs(messages: any[]): void {
+export function sanitizeToolMessagePairs(messages: any[]): void {
   const toRemove = new Set<number>();
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i]!;
