@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useAppStore } from '../../store';
 import type { CompileError } from '@maquetto/api-types';
 
@@ -16,8 +16,10 @@ export function CompilationErrors() {
   const warnings = useAppStore((s) => s.warnings);
   const compilationStatus = useAppStore((s) => s.compilationStatus);
   const executionTimeMs = useAppStore((s) => s.executionTimeMs);
+  const consoleOutput = useAppStore((s) => s.consoleOutput);
   const aiProviderType = useAppStore((s) => s.aiProvider.type);
   const setPendingChatMessage = useAppStore((s) => s.setPendingChatMessage);
+  const [showConsole, setShowConsole] = useState(false);
 
   const handleAskAI = useCallback(() => {
     const message = formatErrorsForChat(errors);
@@ -29,6 +31,7 @@ export function CompilationErrors() {
 
   const hasErrors = errors.length > 0;
   const hasWarnings = warnings.length > 0;
+  const hasConsoleOutput = !!consoleOutput;
   const canAskAI = hasErrors && aiProviderType !== 'none';
 
   return (
@@ -119,6 +122,37 @@ export function CompilationErrors() {
           {w}
         </div>
       ))}
+
+      {/* Console output (collapsible) */}
+      {hasConsoleOutput && (
+        <>
+          <div
+            onClick={() => setShowConsole((v) => !v)}
+            style={{
+              padding: '3px 12px',
+              color: '#8b8bbb',
+              cursor: 'pointer',
+              userSelect: 'none',
+              borderTop: '1px solid #2a2a3e',
+            }}
+          >
+            {showConsole ? '\u25BC' : '\u25B6'} Output
+          </div>
+          {showConsole && (
+            <div
+              style={{
+                padding: '3px 12px',
+                color: '#b0b0d0',
+                whiteSpace: 'pre-wrap',
+                maxHeight: '80px',
+                overflowY: 'auto',
+              }}
+            >
+              {consoleOutput}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
