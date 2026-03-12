@@ -22,6 +22,69 @@ interface AgentLike {
 }
 
 /**
+ * Check if a model message contains tool-call parts.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function hasToolCalls(msg: any): boolean {
+  if (msg.role !== 'assistant' || !Array.isArray(msg.content)) return false;
+  return msg.content.some(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (p: any) => p.type === 'tool-call',
+  );
+}
+
+/**
+ * Ensure every assistant message with tool-calls is immediately followed
+ * by a tool message, and every tool message is immediately preceded by
+ * an assistant message with tool-calls. Gemini rejects requests where
+ * functionCall / functionResponse turns are not adjacent.
+ *
+ * For assistant messages with mixed content (text + tool-calls), we strip
+ * the tool-call parts rather than removing the whole message, preserving
+ * the text content for context.
+ *
+ * Mutates the array in place.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function sanitizeToolMessagePairs(messages: any[]): void {
+  const toRemove = new Set<number>();
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i]!;
+
+    if (msg.role === 'tool') {
+      // Tool response must be preceded by an assistant with tool-calls
+      const prev = i > 0 ? messages[i - 1] : null;
+      if (!prev || !hasToolCalls(prev) || toRemove.has(i - 1)) {
+        toRemove.add(i);
+      }
+    }
+
+    if (hasToolCalls(msg)) {
+      // Assistant with tool-calls must be followed by a tool response
+      const next = i + 1 < messages.length ? messages[i + 1] : null;
+      if (!next || next.role !== 'tool') {
+        // Strip tool-call parts instead of removing the entire message
+        if (Array.isArray(msg.content)) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          msg.content = msg.content.filter((p: any) => p.type !== 'tool-call');
+          if (msg.content.length === 0) {
+            toRemove.add(i);
+          }
+        }
+      }
+    }
+  }
+
+  if (toRemove.size > 0) {
+    const indices = [...toRemove].sort((a, b) => b - a);
+    for (const idx of indices) {
+      messages.splice(idx, 1);
+    }
+    console.log(`[Transport] Removed ${toRemove.size} orphaned tool messages for Gemini compatibility`);
+  }
+}
+
+/**
  * A drop-in replacement for DirectChatTransport that handles data: URL
  * file attachments.
  *
@@ -56,19 +119,20 @@ export class DataUrlSafeChatTransport {
     });
 
     // Limit message history to avoid exceeding context window.
-    // Keep the last MAX_MESSAGES messages, but ensure we don't cut between
-    // a tool call (assistant) and its tool response — Gemini requires
-    // function_call and function_response to be adjacent.
     const MAX_MESSAGES = 40;
     if (modelMessages.length > MAX_MESSAGES) {
       let cutIdx = modelMessages.length - MAX_MESSAGES;
       // Walk forward past any orphaned tool responses at the cut point.
-      // A 'tool' message without its preceding assistant tool-call is invalid.
       while (cutIdx < modelMessages.length && modelMessages[cutIdx]!.role === 'tool') {
         cutIdx++;
       }
       modelMessages.splice(0, cutIdx);
     }
+
+    // Sanitize tool call/response ordering for Gemini compatibility.
+    // Gemini requires: assistant(functionCall) immediately followed by tool(functionResponse).
+    // Walk the array and remove any orphaned tool calls or tool responses.
+    sanitizeToolMessagePairs(modelMessages);
 
     // Strip duplicated context from older user messages. Each user message
     // has a `\n\n---\n` suffix with full code + part metadata. Keeping all
