@@ -257,6 +257,10 @@ export function ChatPanel({ onCompile, engine }: ChatPanelProps) {
 
   const handleStop = () => {
     stop();
+    // Also cancel any in-progress compilation triggered by the AI's test_code tool.
+    // The abort signal tells the tool not to push results, but the worker may still
+    // be running — terminate it so the user isn't stuck waiting.
+    engine?.cancelCompile();
   };
 
   return (

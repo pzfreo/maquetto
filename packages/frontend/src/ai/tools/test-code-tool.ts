@@ -29,10 +29,27 @@ export function createTestCodeTool(compileFn: CompileFn) {
     description:
       'MANDATORY: Test Build123d Python code by compiling it in the CAD engine. You MUST call this tool before presenting ANY code to the user. Returns compilation errors (fix and retry) or success with part count.',
     inputSchema,
-    execute: async ({ code }: z.infer<typeof inputSchema>) => {
+    execute: async (
+      { code }: z.infer<typeof inputSchema>,
+      { abortSignal }: { abortSignal?: AbortSignal },
+    ) => {
       console.log('[test_code] Testing code...', code.length, 'chars');
+
+      // Bail early if already aborted (user clicked Stop)
+      if (abortSignal?.aborted) {
+        console.log('[test_code] Aborted before compilation');
+        return { success: false as const, errors: [{ type: 'runtime' as const, message: 'Cancelled', line: null }] };
+      }
+
       try {
         const result = await compileFn(code);
+
+        // Check abort again after compilation — don't push stale results
+        if (abortSignal?.aborted) {
+          console.log('[test_code] Aborted after compilation');
+          return { success: false as const, errors: [{ type: 'runtime' as const, message: 'Cancelled', line: null }] };
+        }
+
         if (result.errors.length > 0) {
           console.log('[test_code] Errors:', result.errors.length);
           return {
