@@ -82,6 +82,26 @@ export function sanitizeToolMessagePairs(messages: any[]): void {
     }
     console.log(`[Transport] Removed ${toRemove.size} orphaned tool messages for Gemini compatibility`);
   }
+
+  // Merge consecutive assistant messages. Gemini requires that a functionCall
+  // turn comes after a user or functionResponse turn — NOT after another model
+  // turn. Multi-step tool loops can produce: assistant(text) → assistant(tool-call),
+  // which Gemini rejects. Merging them into one turn fixes this.
+  let i = 0;
+  while (i < messages.length - 1) {
+    if (messages[i]!.role === 'assistant' && messages[i + 1]!.role === 'assistant') {
+      const current = messages[i]!;
+      const next = messages[i + 1]!;
+      // Merge content arrays
+      const currentContent = Array.isArray(current.content) ? current.content : [{ type: 'text', text: current.content }];
+      const nextContent = Array.isArray(next.content) ? next.content : [{ type: 'text', text: next.content }];
+      current.content = [...currentContent, ...nextContent];
+      messages.splice(i + 1, 1);
+      // Don't increment — check if the next message is also assistant
+    } else {
+      i++;
+    }
+  }
 }
 
 /**
