@@ -94,21 +94,25 @@ export function createGoogleTransport(
 
   const tools = { test_code: createTestCodeTool(compileFn) };
 
-  // Track whether the last test_code call failed so we can force a retry.
-  // Starts false — the AI decides whether code changes are needed.
-  let lastTestFailed = false;
+  // Track test_code result to control tool usage in subsequent steps.
+  // 'none' = first step (AI decides whether to code or just chat)
+  // 'failed' = after error (force retry with toolChoice: required)
+  // 'succeeded' = after success (prevent retries with toolChoice: none)
+  let lastTestResult: 'none' | 'failed' | 'succeeded' = 'none';
 
   const agent = new ToolLoopAgent({
     model: google(resolvedModel),
     instructions: systemPrompt,
     tools,
     stopWhen: stepCountIs(6),
-    // Only force tool use when the previous test_code call returned errors,
-    // so the AI must fix and retry rather than presenting broken code.
-    // On step 0 we use 'auto' — the AI decides whether code changes are
-    // needed (conversational messages like "thanks" don't need code).
     prepareStep() {
-      return { toolChoice: lastTestFailed ? ('required' as const) : ('auto' as const) };
+      // After success: force 'none' so Gemini writes its response instead
+      // of calling test_code again (Gemini is tool-happy with 'auto').
+      // After failure: force 'required' so it must fix and retry.
+      // First step: 'auto' so conversational messages don't trigger code.
+      if (lastTestResult === 'succeeded') return { toolChoice: 'none' as const };
+      if (lastTestResult === 'failed') return { toolChoice: 'required' as const };
+      return { toolChoice: 'auto' as const };
     },
     onStepFinish({ stepNumber, finishReason, toolCalls, toolResults }) {
       console.log(`[Google] Step ${stepNumber} finished: reason=${finishReason}, toolCalls=${toolCalls.length}, toolResults=${toolResults.length}`);
@@ -116,11 +120,18 @@ export function createGoogleTransport(
         console.log(`[Google]   tool=${r.toolName} output=`, r.output);
         if (r.toolName === 'test_code') {
           const output = r.output as Record<string, unknown>;
-          lastTestFailed = output.success !== true;
+          lastTestResult = output.success === true ? 'succeeded' : 'failed';
         }
       }
     },
   });
 
-  return new DataUrlSafeChatTransport({ agent });
+  return new DataUrlSafeChatTransport({
+    agent,
+    onBeforeStream() {
+      // Reset tool state for each new user message so stale results
+      // from a previous conversation turn don't affect tool choice.
+      lastTestResult = 'none';
+    },
+  });
 }
