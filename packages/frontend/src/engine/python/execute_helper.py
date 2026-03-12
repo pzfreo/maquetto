@@ -192,6 +192,17 @@ def _execute_and_export(code_str, quality_level):
         if filtered:
             shapes = filtered
 
+    # When 3D solids exist, filter out 2D/construction geometry (Sketch, Face, Edge, Wire).
+    # These are almost always intermediate construction artifacts, not final output.
+    from build123d import Face, Edge, Wire, Solid
+    solids = [(n, o) for n, o in shapes
+              if isinstance(o, (Part, Solid, Compound)) and not isinstance(o, (Face, Edge, Wire, Sketch))]
+    if solids:
+        non_solids = [n for n, o in shapes if (n, o) not in solids]
+        if non_solids:
+            print(f'[export] Hidden construction geometry: {", ".join(non_solids)}')
+        shapes = solids
+
     if not shapes:
         elapsed = (time.time() - start_time) * 1000
         return json.dumps({
