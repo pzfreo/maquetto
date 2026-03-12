@@ -38,7 +38,7 @@ export function CompilationErrors() {
     <div
       style={{
         flexShrink: 0,
-        maxHeight: '120px',
+        maxHeight: '200px',
         overflowY: 'auto',
         borderTop: '1px solid #2a2a3e',
         background: '#16162a',
@@ -75,11 +75,24 @@ export function CompilationErrors() {
             {warnings.length} warning{warnings.length !== 1 ? 's' : ''}
           </span>
         )}
+        {hasConsoleOutput && (
+          <span
+            onClick={() => setShowConsole((v) => !v)}
+            style={{
+              marginLeft: canAskAI ? '8px' : 'auto',
+              color: '#8b8bbb',
+              cursor: 'pointer',
+              userSelect: 'none',
+            }}
+          >
+            {showConsole ? '\u25BC' : '\u25B6'} Output
+          </span>
+        )}
         {canAskAI && (
           <button
             onClick={handleAskAI}
             style={{
-              marginLeft: 'auto',
+              marginLeft: hasConsoleOutput ? '8px' : 'auto',
               padding: '2px 8px',
               fontSize: '11px',
               background: '#d97706',
@@ -123,35 +136,18 @@ export function CompilationErrors() {
         </div>
       ))}
 
-      {/* Console output (collapsible) */}
-      {hasConsoleOutput && (
-        <>
-          <div
-            onClick={() => setShowConsole((v) => !v)}
-            style={{
-              padding: '3px 12px',
-              color: '#8b8bbb',
-              cursor: 'pointer',
-              userSelect: 'none',
-              borderTop: '1px solid #2a2a3e',
-            }}
-          >
-            {showConsole ? '\u25BC' : '\u25B6'} Output
-          </div>
-          {showConsole && (
-            <div
-              style={{
-                padding: '3px 12px',
-                color: '#b0b0d0',
-                whiteSpace: 'pre-wrap',
-                maxHeight: '80px',
-                overflowY: 'auto',
-              }}
-            >
-              {consoleOutput}
-            </div>
-          )}
-        </>
+      {/* Console output (expanded inline) */}
+      {hasConsoleOutput && showConsole && (
+        <div
+          style={{
+            padding: '3px 12px',
+            color: '#b0b0d0',
+            whiteSpace: 'pre-wrap',
+            borderTop: '1px solid #2a2a3e',
+          }}
+        >
+          {consoleOutput}
+        </div>
       )}
     </div>
   );
