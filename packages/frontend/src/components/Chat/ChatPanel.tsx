@@ -76,6 +76,30 @@ interface ToolInvocationInfo {
 }
 
 /**
+ * Check if the last assistant message ended with unresolved tool errors
+ * (i.e. the tool loop was exhausted without a successful compilation).
+ */
+function hasUnresolvedToolErrors(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  parts: ReadonlyArray<Record<string, any>>,
+): boolean {
+  const toolParts = parts.filter(
+    (p) => typeof p.type === 'string' && (p.type.startsWith('tool-') || p.type === 'dynamic-tool'),
+  );
+  if (toolParts.length === 0) return false;
+
+  // Check if any tool call succeeded — if so, no need to retry
+  const hasSuccess = toolParts.some(
+    (p) => p.state === 'output-available' && p.output?.success === true,
+  );
+  if (hasSuccess) return false;
+
+  // The last tool call failed
+  const last = toolParts[toolParts.length - 1]!;
+  return last.state === 'output-available' && last.output?.success === false;
+}
+
+/**
  * Extract tool invocation info from the latest assistant message parts.
  */
 function getToolActivity(
@@ -150,6 +174,19 @@ export function ChatPanel({ onCompile, engine }: ChatPanelProps) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return getToolActivity(lastMessage.parts as ReadonlyArray<Record<string, any>>);
   }, [isStreaming, messages]);
+
+  // Show a retry button when the AI exhausted its tool loop without success.
+  const showRetry = useMemo(() => {
+    if (isStreaming) return false;
+    const lastMessage = messages[messages.length - 1];
+    if (!lastMessage || lastMessage.role !== 'assistant') return false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return hasUnresolvedToolErrors(lastMessage.parts as ReadonlyArray<Record<string, any>>);
+  }, [isStreaming, messages]);
+
+  const handleRetry = useCallback(() => {
+    sendMessage('The code still has errors. Please continue trying to fix it.');
+  }, [sendMessage]);
 
   // Send pending messages from other panels (e.g. "Ask AI to fix" button)
   useEffect(() => {
@@ -384,6 +421,27 @@ export function ChatPanel({ onCompile, engine }: ChatPanelProps) {
                     ? `Code compiled successfully — AI is writing response…`
                     : `Testing code${toolActivity.count > 1 ? ` (attempt ${toolActivity.count})` : ''}…`}
             </span>
+          </div>
+        )}
+
+        {/* Retry button when AI exhausted tool loop without success */}
+        {showRetry && (
+          <div style={{ display: 'flex', justifyContent: 'center', margin: '8px 0' }}>
+            <button
+              onClick={handleRetry}
+              style={{
+                padding: '6px 16px',
+                borderRadius: '6px',
+                background: '#f4a836',
+                color: '#1a1a2e',
+                border: 'none',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Keep trying to fix
+            </button>
           </div>
         )}
 
