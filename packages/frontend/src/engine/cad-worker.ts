@@ -208,6 +208,7 @@ async function handleCompile(
 
   try {
     console.log(`[Worker] Compiling (quality=${quality}, ${code.length} chars)...`);
+    activeRequestId = requestId;
     // Pass code and quality to the Python execute helper
     pyodide.globals.set('_user_code', code);
     pyodide.globals.set('_quality_level', quality);
@@ -226,6 +227,7 @@ async function handleCompile(
     const result = JSON.parse(resultJson);
     console.log(`[Worker] Compilation complete: ${result.errors.length} errors, ${result.warnings.length} warnings, ${result.parts.length} parts, glTF=${result.gltfBase64.length} chars, ${result.executionTimeMs}ms`);
 
+    activeRequestId = null;
     const msg: WorkerResponse = {
       type: 'compile-result',
       requestId,
@@ -233,6 +235,7 @@ async function handleCompile(
     };
     self.postMessage(msg);
   } catch (err) {
+    activeRequestId = null;
     const message = err instanceof Error ? err.message : String(err);
     console.error('[Worker] Compilation failed:', message);
     const msg: WorkerResponse = {
@@ -315,6 +318,40 @@ async function handleExport(
     self.postMessage(msg);
   }
 }
+
+// Catch WASM crashes that bypass try/catch (e.g. RuntimeError: memory access out of bounds).
+// These show up as unhandled promise rejections because the WASM runtime dies asynchronously.
+let activeRequestId: string | null = null;
+
+self.addEventListener('unhandledrejection', (event) => {
+  const message = event.reason instanceof Error ? event.reason.message : String(event.reason);
+  console.error('[Worker] Unhandled rejection (likely WASM crash):', message);
+  if (activeRequestId) {
+    const msg: WorkerResponse = {
+      type: 'compile-error',
+      requestId: activeRequestId,
+      error: { code: 'WASM_CRASH', message: `WASM runtime error: ${message}` },
+    };
+    self.postMessage(msg);
+    activeRequestId = null;
+  }
+  // Also notify the main thread that the engine is in a bad state
+  postError('error', 'WASM_CRASH', `WASM runtime error: ${message}. Click Retry to restart the engine.`);
+});
+
+self.addEventListener('error', (event) => {
+  console.error('[Worker] Uncaught error:', event.message);
+  if (activeRequestId) {
+    const msg: WorkerResponse = {
+      type: 'compile-error',
+      requestId: activeRequestId,
+      error: { code: 'WORKER_ERROR', message: event.message },
+    };
+    self.postMessage(msg);
+    activeRequestId = null;
+  }
+  postError('error', 'WORKER_ERROR', `${event.message}. Click Retry to restart the engine.`);
+});
 
 // Message handler
 self.onmessage = (e: MessageEvent<WorkerRequest>) => {
