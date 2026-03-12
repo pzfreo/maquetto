@@ -33,6 +33,19 @@ def _export_to_format(code_str, fmt):
     if not shapes:
         return json.dumps({'error': 'No shapes found to export'})
 
+    # When 3D solids exist, filter out 2D/construction geometry
+    from build123d import Face, Edge, Wire, Solid
+    solids = [(n, o) for n, o in shapes
+              if isinstance(o, (Part, Solid, Compound)) and not isinstance(o, (Face, Edge, Wire, Sketch))]
+    if solids:
+        non_solids = [n for n, o in shapes if (n, o) not in solids]
+        if non_solids:
+            print(f'[export] Hidden construction geometry: {", ".join(non_solids)}')
+        shapes = solids
+
+    if not shapes:
+        return json.dumps({'error': 'No shapes found to export after filtering'})
+
     shape_objects = [s[1] for s in shapes]
     if len(shape_objects) == 1:
         assembly = shape_objects[0]

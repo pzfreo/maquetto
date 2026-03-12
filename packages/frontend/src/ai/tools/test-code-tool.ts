@@ -5,6 +5,9 @@ import { useAppStore } from '../../store';
 
 export type CompileFn = (code: string) => Promise<CompileResult>;
 
+/** Max time for AI-triggered compilation before we give up (ms). */
+const COMPILE_TIMEOUT_MS = 60_000;
+
 /**
  * Creates the test_code tool. The compileFn uses a ref internally so it's
  * always up to date — if the engine isn't ready it throws, which the
@@ -29,10 +32,43 @@ export function createTestCodeTool(compileFn: CompileFn) {
     description:
       'MANDATORY: Test Build123d Python code by compiling it in the CAD engine. You MUST call this tool before presenting ANY code to the user. Returns compilation errors (fix and retry) or success with part count.',
     inputSchema,
-    execute: async ({ code }: z.infer<typeof inputSchema>) => {
+    execute: async (
+      { code }: z.infer<typeof inputSchema>,
+      { abortSignal }: { abortSignal?: AbortSignal },
+    ) => {
       console.log('[test_code] Testing code...', code.length, 'chars');
+
+      // Bail early if already aborted (user clicked Stop)
+      if (abortSignal?.aborted) {
+        console.log('[test_code] Aborted before compilation');
+        return { success: false as const, errors: [{ type: 'runtime' as const, message: 'Cancelled', line: null }] };
+      }
+
       try {
-        const result = await compileFn(code);
+        // Race the compilation against a timeout and the abort signal.
+        // If the worker hangs (crash, infinite loop), this prevents the
+        // chat from blocking forever.
+        const result = await Promise.race([
+          compileFn(code),
+          new Promise<never>((_, reject) => {
+            const timer = setTimeout(
+              () => reject(new Error('Compilation timed out after 60s')),
+              COMPILE_TIMEOUT_MS,
+            );
+            // Also reject if abort signal fires during compilation
+            abortSignal?.addEventListener('abort', () => {
+              clearTimeout(timer);
+              reject(new Error('Cancelled'));
+            }, { once: true });
+          }),
+        ]);
+
+        // Check abort again after compilation — don't push stale results
+        if (abortSignal?.aborted) {
+          console.log('[test_code] Aborted after compilation');
+          return { success: false as const, errors: [{ type: 'runtime' as const, message: 'Cancelled', line: null }] };
+        }
+
         if (result.errors.length > 0) {
           console.log('[test_code] Errors:', result.errors.length);
           return {
