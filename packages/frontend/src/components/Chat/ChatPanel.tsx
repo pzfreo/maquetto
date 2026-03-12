@@ -208,10 +208,22 @@ export function ChatPanel({ onCompile, engine }: ChatPanelProps) {
       const lastAssistant = assistantMessages[assistantMessages.length - 1];
       if (!lastAssistant) return;
 
-      // If test_code was used, the code is already applied — skip
+      // If test_code was used, the code is already applied.
+      // But update the version summary now that we have the AI's text response.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const toolCode = getCodeFromToolCalls(lastAssistant.parts as ReadonlyArray<Record<string, any>>);
-      if (toolCode) return;
+      if (toolCode) {
+        const fullText = getMessageText(lastAssistant.parts);
+        if (fullText) {
+          const summary = extractSummary(fullText);
+          const userMessages = messages.filter((m) => m.role === 'user');
+          const lastUserMsg = userMessages[userMessages.length - 1];
+          const prompt = lastUserMsg ? getMessageText(lastUserMsg.parts) : null;
+          const cleanPrompt = prompt?.split('\n\n---\n')[0] ?? null;
+          useAppStore.getState().updateLatestVersionSummary(summary, cleanPrompt);
+        }
+        return;
+      }
 
       // Fallback: extract from text code blocks
       const fullText = getMessageText(lastAssistant.parts);

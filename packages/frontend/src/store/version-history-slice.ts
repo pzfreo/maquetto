@@ -48,6 +48,17 @@ export const createVersionHistorySlice: StateCreator<AppStore, [], [], VersionHi
     set({ versions: updated });
   },
 
+  updateLatestVersionSummary: (summary, prompt) => {
+    const current = get().versions;
+    if (current.length === 0) return;
+    const latest = current[0]!;
+    if (latest.summary !== 'AI code update') return; // Only update generic summaries
+    const updated = [{ ...latest, summary, prompt: prompt ?? latest.prompt }, ...current.slice(1)];
+    persistVersions(updated);
+    console.log(`[VersionHistory] Updated latest summary: "${summary}"`);
+    set({ versions: updated });
+  },
+
   selectVersion: (id) => set({ selectedVersionId: id }),
 
   revertToVersion: (id) => {
