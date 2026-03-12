@@ -1,4 +1,4 @@
-import { ToolLoopAgent, stepCountIs } from 'ai';
+import { ToolLoopAgent } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createTestCodeTool, type CompileFn } from '../tools/test-code-tool';
 import { DataUrlSafeChatTransport } from './data-url-safe-transport';
@@ -28,12 +28,23 @@ export function createAnthropicTransport(
   const tools = { test_code: createTestCodeTool(compileFn) };
 
   let lastTestResult: 'none' | 'failed' | 'succeeded' = 'none';
+  let stepsAfterSuccess = 0;
 
   const agent = new ToolLoopAgent({
     model: anthropic(resolvedModel),
     instructions: systemPrompt,
     tools,
-    stopWhen: stepCountIs(6),
+    stopWhen: ({ steps }) => {
+      if (steps.length >= 6) return true;
+      if (lastTestResult === 'succeeded') {
+        stepsAfterSuccess++;
+        if (stepsAfterSuccess > 1) {
+          console.log('[Anthropic] Stopping loop: success + text step completed');
+          return true;
+        }
+      }
+      return false;
+    },
     prepareStep() {
       if (lastTestResult === 'succeeded') return { toolChoice: 'none' as const };
       if (lastTestResult === 'failed') return { toolChoice: 'required' as const };
@@ -55,6 +66,7 @@ export function createAnthropicTransport(
     agent,
     onBeforeStream() {
       lastTestResult = 'none';
+      stepsAfterSuccess = 0;
     },
   });
 }
