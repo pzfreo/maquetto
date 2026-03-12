@@ -185,7 +185,7 @@ export function ChatPanel({ onCompile, engine }: ChatPanelProps) {
   }, [isStreaming, messages]);
 
   const handleRetry = useCallback(() => {
-    sendMessage('The code still has errors. Please continue trying to fix it.');
+    sendMessage('The code still has errors. Please continue trying to fix it. After you succeed, explain what you changed.');
   }, [sendMessage]);
 
   // Send pending messages from other panels (e.g. "Ask AI to fix" button)
