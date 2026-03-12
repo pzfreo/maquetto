@@ -44,6 +44,34 @@ export function createTestCodeTool(compileFn: CompileFn) {
         return { success: false as const, errors: [{ type: 'runtime' as const, message: 'Cancelled', line: null }] };
       }
 
+      // Check if engine is in error/loading state — don't waste tool loop
+      // iterations retrying when the engine itself is broken or not ready.
+      const enginePhase = useAppStore.getState().engineStatus.phase;
+      if (enginePhase === 'error') {
+        console.log('[test_code] Engine is in error state, aborting');
+        return {
+          success: false as const,
+          engineError: true,
+          errors: [{
+            type: 'runtime' as const,
+            message: 'The CAD engine has crashed (WASM error). Do NOT retry — tell the user to click the Retry button in the error banner to restart the engine, then try again.',
+            line: null,
+          }],
+        };
+      }
+      if (enginePhase !== 'ready') {
+        console.log('[test_code] Engine not ready, phase:', enginePhase);
+        return {
+          success: false as const,
+          engineError: true,
+          errors: [{
+            type: 'runtime' as const,
+            message: `The CAD engine is not ready (status: ${enginePhase}). Do NOT retry — tell the user to wait for the engine to finish loading.`,
+            line: null,
+          }],
+        };
+      }
+
       try {
         // Race the compilation against a timeout and the abort signal.
         // If the worker hangs (crash, infinite loop), this prevents the
