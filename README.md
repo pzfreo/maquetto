@@ -14,7 +14,13 @@ Maquetto is a browser-only CAD IDE that combines a Python code editor, a 3D view
 - **Progressive UX** — Editor and chat load in under 1 second. The CAD engine loads in the background. A service worker caches all WASM for fast revisits.
 - **Cloud save** — Sign in with Google to save projects to the cloud (Supabase + RLS).
 
-## Quick Start
+## Try It
+
+Go to **[maquet.to](https://maquet.to)** — no install required. The CAD engine takes ~30s to load on first visit (WASM is cached after that).
+
+To use the AI assistant, you'll need an API key. On the first-run screen, paste a **Google Gemini** or **Anthropic Claude** API key. Google OAuth sign-in is available but the OAuth app is not yet verified by Google, so **BYOK (Bring Your Own Key) is the recommended approach** for now.
+
+## Development Setup
 
 ```bash
 # Prerequisites: Node 22+, pnpm 9+
@@ -22,7 +28,7 @@ pnpm install
 pnpm dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173). The CAD engine will take ~30s to load on first visit (WASM downloads are cached after that).
+Open [http://localhost:5173](http://localhost:5173).
 
 ### Environment Variables
 
@@ -37,7 +43,7 @@ VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
 VITE_GOOGLE_CLIENT_ID=your-google-client-id
 ```
 
-AI providers can also be configured with BYOK (Bring Your Own Key) directly in the app — no environment variables needed.
+AI providers can also be configured with BYOK directly in the app — no environment variables needed for local development.
 
 ## Architecture
 
@@ -117,6 +123,12 @@ pnpm test         # Run tests
 pnpm typecheck    # TypeScript type checking
 pnpm lint         # ESLint
 ```
+
+## Built with Claude
+
+Maquetto is entirely coded by [Claude](https://claude.ai) (Anthropic's AI), working with [Paul Fremantle](https://github.com/pzfreo) as product owner and design partner. The development workflow uses [Claude Code](https://claude.com/claude-code) — Paul defines requirements and provides feedback, Claude writes all the code, tests, and architecture.
+
+This is an experiment in AI-native software development: instead of writing code and using AI to assist, the human focuses on product vision, architecture decisions, and quality review while the AI handles implementation end-to-end. The [CLAUDE.md](CLAUDE.md) file serves as the living design document that guides Claude's work across sessions.
 
 ## License
 
