@@ -56,11 +56,18 @@ export class DataUrlSafeChatTransport {
     });
 
     // Limit message history to avoid exceeding context window.
-    // Keep the last MAX_MESSAGES messages. This is a simple truncation —
-    // the system prompt provides all needed context via the latest message.
+    // Keep the last MAX_MESSAGES messages, but ensure we don't cut between
+    // a tool call (assistant) and its tool response — Gemini requires
+    // function_call and function_response to be adjacent.
     const MAX_MESSAGES = 40;
     if (modelMessages.length > MAX_MESSAGES) {
-      modelMessages.splice(0, modelMessages.length - MAX_MESSAGES);
+      let cutIdx = modelMessages.length - MAX_MESSAGES;
+      // Walk forward past any orphaned tool responses at the cut point.
+      // A 'tool' message without its preceding assistant tool-call is invalid.
+      while (cutIdx < modelMessages.length && modelMessages[cutIdx]!.role === 'tool') {
+        cutIdx++;
+      }
+      modelMessages.splice(0, cutIdx);
     }
 
     // Strip duplicated context from older user messages. Each user message
