@@ -27,18 +27,34 @@ export function createAnthropicTransport(
 
   const tools = { test_code: createTestCodeTool(compileFn) };
 
+  let lastTestResult: 'none' | 'failed' | 'succeeded' = 'none';
+
   const agent = new ToolLoopAgent({
     model: anthropic(resolvedModel),
     instructions: systemPrompt,
     tools,
     stopWhen: stepCountIs(6),
+    prepareStep() {
+      if (lastTestResult === 'succeeded') return { toolChoice: 'none' as const };
+      if (lastTestResult === 'failed') return { toolChoice: 'required' as const };
+      return { toolChoice: 'auto' as const };
+    },
     onStepFinish({ stepNumber, finishReason, toolCalls, toolResults }) {
       console.log(`[Anthropic] Step ${stepNumber} finished: reason=${finishReason}, toolCalls=${toolCalls.length}, toolResults=${toolResults.length}`);
       for (const r of toolResults) {
         console.log(`[Anthropic]   tool=${r.toolName} output=`, r.output);
+        if (r.toolName === 'test_code') {
+          const output = r.output as Record<string, unknown>;
+          lastTestResult = output.success === true ? 'succeeded' : 'failed';
+        }
       }
     },
   });
 
-  return new DataUrlSafeChatTransport({ agent });
+  return new DataUrlSafeChatTransport({
+    agent,
+    onBeforeStream() {
+      lastTestResult = 'none';
+    },
+  });
 }
