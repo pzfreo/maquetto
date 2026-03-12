@@ -209,4 +209,52 @@ describe('sanitizeToolMessagePairs', () => {
       assistantText('hello there'),
     ]);
   });
+
+  it('merges consecutive assistant messages to prevent Gemini function_call ordering errors', () => {
+    // This case happens when a multi-step tool loop produces:
+    // assistant(text) → assistant(tool-call) → tool
+    // Gemini rejects functionCall after a model turn (must be after user or function turn).
+    const messages = [
+      userMsg('make a box'),
+      assistantToolCall('tc1', 'test_code'),
+      toolResponse('tc1', 'error'),
+      assistantText('Let me try a different approach'),
+      assistantToolCall('tc2', 'test_code'),
+      toolResponse('tc2', 'success'),
+      assistantText('Done!'),
+    ];
+    sanitizeToolMessagePairs(messages);
+    // Messages 3+4 (consecutive assistants) merged, "Done!" stays separate (follows tool)
+    expect(messages.length).toBe(6);
+    expect(messages[0]).toEqual(userMsg('make a box'));
+    expect(messages[1]).toEqual(assistantToolCall('tc1', 'test_code'));
+    expect(messages[2]).toEqual(toolResponse('tc1', 'error'));
+    expect(messages[3]!.role).toBe('assistant');
+    expect(messages[3]!.content).toHaveLength(2); // text + tool-call
+    expect(messages[3]!.content[0].type).toBe('text');
+    expect(messages[3]!.content[1].type).toBe('tool-call');
+    expect(messages[4]).toEqual(toolResponse('tc2', 'success'));
+    expect(messages[5]).toEqual(assistantText('Done!'));
+  });
+
+  it('merges multiple consecutive assistant messages', () => {
+    const messages = [
+      userMsg('make a box'),
+      assistantText('Let me try'),
+      assistantToolCall('tc1', 'test_code'),
+      toolResponse('tc1', 'success'),
+      assistantText('Done!'),
+    ];
+    sanitizeToolMessagePairs(messages);
+    // Messages 1+2 (consecutive assistants) should be merged
+    expect(messages.length).toBe(4);
+    expect(messages[0]).toEqual(userMsg('make a box'));
+    expect(messages[1]!.role).toBe('assistant');
+    expect(messages[1]!.content).toHaveLength(2);
+    expect(messages[1]!.content[0].type).toBe('text');
+    expect(messages[1]!.content[0].text).toBe('Let me try');
+    expect(messages[1]!.content[1].type).toBe('tool-call');
+    expect(messages[2]).toEqual(toolResponse('tc1', 'success'));
+    expect(messages[3]).toEqual(assistantText('Done!'));
+  });
 });
