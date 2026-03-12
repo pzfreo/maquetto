@@ -230,9 +230,11 @@ describe('sanitizeToolMessagePairs', () => {
     expect(messages[1]).toEqual(assistantToolCall('tc1', 'test_code'));
     expect(messages[2]).toEqual(toolResponse('tc1', 'error'));
     expect(messages[3]!.role).toBe('assistant');
-    expect(messages[3]!.content).toHaveLength(2); // text + tool-call
-    expect(messages[3]!.content[0].type).toBe('text');
-    expect(messages[3]!.content[1].type).toBe('tool-call');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const merged3 = messages[3]!.content as any[];
+    expect(merged3).toHaveLength(2); // text + tool-call
+    expect(merged3[0].type).toBe('text');
+    expect(merged3[1].type).toBe('tool-call');
     expect(messages[4]).toEqual(toolResponse('tc2', 'success'));
     expect(messages[5]).toEqual(assistantText('Done!'));
   });
@@ -250,10 +252,12 @@ describe('sanitizeToolMessagePairs', () => {
     expect(messages.length).toBe(4);
     expect(messages[0]).toEqual(userMsg('make a box'));
     expect(messages[1]!.role).toBe('assistant');
-    expect(messages[1]!.content).toHaveLength(2);
-    expect(messages[1]!.content[0].type).toBe('text');
-    expect(messages[1]!.content[0].text).toBe('Let me try');
-    expect(messages[1]!.content[1].type).toBe('tool-call');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const merged1 = messages[1]!.content as any[];
+    expect(merged1).toHaveLength(2);
+    expect(merged1[0].type).toBe('text');
+    expect(merged1[0].text).toBe('Let me try');
+    expect(merged1[1].type).toBe('tool-call');
     expect(messages[2]).toEqual(toolResponse('tc1', 'success'));
     expect(messages[3]).toEqual(assistantText('Done!'));
   });
