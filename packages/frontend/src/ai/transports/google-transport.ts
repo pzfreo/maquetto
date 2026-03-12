@@ -1,4 +1,4 @@
-import { ToolLoopAgent, stepCountIs } from 'ai';
+import { ToolLoopAgent } from 'ai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createTestCodeTool, type CompileFn } from '../tools/test-code-tool';
 import { DataUrlSafeChatTransport } from './data-url-safe-transport';
@@ -94,22 +94,29 @@ export function createGoogleTransport(
 
   const tools = { test_code: createTestCodeTool(compileFn) };
 
-  // Track test_code result to control tool usage in subsequent steps.
-  // 'none' = first step (AI decides whether to code or just chat)
-  // 'failed' = after error (force retry with toolChoice: required)
-  // 'succeeded' = after success (prevent retries with toolChoice: none)
+  // Track test_code result to control tool usage and loop stopping.
   let lastTestResult: 'none' | 'failed' | 'succeeded' = 'none';
+  // After success, allow exactly 1 more step for the AI's text response.
+  let stepsAfterSuccess = 0;
 
   const agent = new ToolLoopAgent({
     model: google(resolvedModel),
     instructions: systemPrompt,
     tools,
-    stopWhen: stepCountIs(6),
+    stopWhen: ({ steps }) => {
+      if (steps.length >= 6) return true;
+      // After success, allow 1 more step for the text response, then stop.
+      // This is the hard stop — toolChoice: 'none' is belt-and-suspenders.
+      if (lastTestResult === 'succeeded') {
+        stepsAfterSuccess++;
+        if (stepsAfterSuccess > 1) {
+          console.log('[Google] Stopping loop: success + text step completed');
+          return true;
+        }
+      }
+      return false;
+    },
     prepareStep() {
-      // After success: force 'none' so Gemini writes its response instead
-      // of calling test_code again (Gemini is tool-happy with 'auto').
-      // After failure: force 'required' so it must fix and retry.
-      // First step: 'auto' so conversational messages don't trigger code.
       if (lastTestResult === 'succeeded') return { toolChoice: 'none' as const };
       if (lastTestResult === 'failed') return { toolChoice: 'required' as const };
       return { toolChoice: 'auto' as const };
@@ -129,9 +136,8 @@ export function createGoogleTransport(
   return new DataUrlSafeChatTransport({
     agent,
     onBeforeStream() {
-      // Reset tool state for each new user message so stale results
-      // from a previous conversation turn don't affect tool choice.
       lastTestResult = 'none';
+      stepsAfterSuccess = 0;
     },
   });
 }
