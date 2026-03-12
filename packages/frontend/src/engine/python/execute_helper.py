@@ -116,10 +116,18 @@ def _execute_and_export(code_str, quality_level):
     # Set up sandboxed namespace with build123d + numpy
     # __SANDBOX_SETUP__
 
+    # Capture user code stdout (print() output)
+    import io as _io
+    _capture_buf = _io.StringIO()
+    _orig_stdout = sys.stdout
+
     # Execute user code
     try:
+        sys.stdout = _capture_buf
         exec(code_str, namespace)
+        sys.stdout = _orig_stdout
     except SyntaxError as e:
+        sys.stdout = _orig_stdout
         elapsed = (time.time() - start_time) * 1000
         return json.dumps({
             'gltfBase64': '',
@@ -132,8 +140,10 @@ def _execute_and_export(code_str, quality_level):
             }],
             'warnings': [],
             'executionTimeMs': round(elapsed),
+            'consoleOutput': _capture_buf.getvalue(),
         })
     except Exception as e:
+        sys.stdout = _orig_stdout
         elapsed = (time.time() - start_time) * 1000
         # Try to extract line number from traceback
         line_no = None
@@ -158,6 +168,7 @@ def _execute_and_export(code_str, quality_level):
             }],
             'warnings': [],
             'executionTimeMs': round(elapsed),
+            'consoleOutput': _capture_buf.getvalue(),
         })
 
     # Scan only user-created variables for Shape-like objects
@@ -211,6 +222,7 @@ def _execute_and_export(code_str, quality_level):
             'errors': [],
             'warnings': ['No shapes found in the code output.'],
             'executionTimeMs': round(elapsed),
+            'consoleOutput': _capture_buf.getvalue(),
         })
 
     # Build part metadata
@@ -292,6 +304,7 @@ def _execute_and_export(code_str, quality_level):
             }],
             'warnings': [],
             'executionTimeMs': round(elapsed),
+            'consoleOutput': _capture_buf.getvalue(),
         })
 
     elapsed = (time.time() - start_time) * 1000
@@ -301,4 +314,5 @@ def _execute_and_export(code_str, quality_level):
         'errors': [],
         'warnings': [],
         'executionTimeMs': round(elapsed),
+        'consoleOutput': _capture_buf.getvalue(),
     })

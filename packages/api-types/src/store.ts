@@ -59,6 +59,8 @@ export interface CompilationSlice {
   readonly warnings: ReadonlyArray<string>;
   readonly gltfData: ArrayBuffer | null;
   readonly executionTimeMs: number | null;
+  /** Captured Python stdout from user code (print() output). */
+  readonly consoleOutput: string | null;
   /** Message queued for the AI chat (e.g. from "Ask AI to fix" button). */
   readonly pendingChatMessage: string | null;
   /** Registered by ChatPanel — clears the AI chat message history. */

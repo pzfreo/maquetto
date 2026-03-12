@@ -67,6 +67,8 @@ export interface CompileResult {
   readonly errors: ReadonlyArray<CompileError>;
   readonly warnings: ReadonlyArray<string>;
   readonly executionTimeMs: number;
+  /** Captured Python stdout from user code (print() output). */
+  readonly consoleOutput?: string;
 }
 
 // --- Export ---

@@ -9,6 +9,7 @@ export const createCompilationSlice: StateCreator<AppStore, [], [], CompilationS
   warnings: [],
   gltfData: null,
   executionTimeMs: null,
+  consoleOutput: null,
   pendingChatMessage: null,
   clearChat: null,
 
@@ -22,6 +23,7 @@ export const createCompilationSlice: StateCreator<AppStore, [], [], CompilationS
       warnings: result.warnings,
       gltfData,
       executionTimeMs: result.executionTimeMs,
+      consoleOutput: result.consoleOutput || null,
     });
   },
 
@@ -35,6 +37,7 @@ export const createCompilationSlice: StateCreator<AppStore, [], [], CompilationS
       warnings: [],
       gltfData: null,
       executionTimeMs: null,
+      consoleOutput: null,
     }),
 
   setPendingChatMessage: (pendingChatMessage) => set({ pendingChatMessage }),
