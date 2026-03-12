@@ -27,7 +27,14 @@ export function useTokenRefresh() {
       console.log('[TokenRefresh] Refreshing Google OAuth token...');
       const result = await refreshGoogleToken(refreshToken);
       if (!result) {
-        console.warn('[TokenRefresh] Refresh failed — token may expire');
+        console.warn('[TokenRefresh] Refresh failed — refresh token may be expired');
+        // Mark credential as invalid so the UI shows a clear message.
+        // Google OAuth apps in "testing" mode have refresh tokens that
+        // expire after 7 days — the user needs to sign in again.
+        useAppStore.getState().setCredentialStatus(
+          'invalid',
+          'Google OAuth session expired. Please sign out and sign in again, or switch to an API key.',
+        );
         return;
       }
 
@@ -40,6 +47,7 @@ export function useTokenRefresh() {
         });
         // Also update providerToken in auth state
         useAppStore.getState().setProviderToken(result.accessToken);
+        useAppStore.getState().setCredentialStatus('valid');
         console.log('[TokenRefresh] AI provider credential updated');
       }
 

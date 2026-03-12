@@ -8,11 +8,19 @@ import { validateCredential } from '../ai/validate-credential';
  */
 export function useCredentialCheck() {
   const aiProvider = useAppStore((s) => s.aiProvider);
+  const providerRefreshToken = useAppStore((s) => s.providerRefreshToken);
   const setCredentialStatus = useAppStore((s) => s.setCredentialStatus);
 
   useEffect(() => {
     if (aiProvider.type === 'none' || !aiProvider.credential) {
       setCredentialStatus('unchecked');
+      return;
+    }
+
+    // For google-oauth with a refresh token, skip validation here —
+    // useTokenRefresh manages the token lifecycle and sets credentialStatus
+    // directly. Validating here would race with the refresh and flash errors.
+    if (aiProvider.type === 'google-oauth' && providerRefreshToken) {
       return;
     }
 
@@ -31,5 +39,5 @@ export function useCredentialCheck() {
     });
 
     return () => { cancelled = true; };
-  }, [aiProvider, setCredentialStatus]);
+  }, [aiProvider, providerRefreshToken, setCredentialStatus]);
 }
