@@ -53,17 +53,21 @@ function getCodeFromToolCalls(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   parts: ReadonlyArray<Record<string, any>>,
 ): string | null {
-  // Walk backwards to find the last successful test_code call
+  // Walk backwards to find the last successful test_code call.
+  // Vercel AI SDK v6 uses type 'tool-<name>' (e.g. 'tool-test_code') for static tools,
+  // and 'input' instead of 'args' for tool arguments.
   for (let i = parts.length - 1; i >= 0; i--) {
     const p = parts[i]!;
+    const isTestCodePart =
+      p.type === 'tool-test_code'
+      || (p.type === 'dynamic-tool' && p.toolName === 'test_code');
     if (
-      (p.type === 'tool-invocation' || p.type?.startsWith?.('tool-'))
-      && p.toolName === 'test_code'
+      isTestCodePart
       && p.state === 'output-available'
       && p.output?.success === true
-      && typeof p.args?.code === 'string'
+      && typeof (p.input?.code ?? p.args?.code) === 'string'
     ) {
-      return p.args.code;
+      return p.input?.code ?? p.args?.code;
     }
   }
   return null;
