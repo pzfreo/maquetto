@@ -76,20 +76,23 @@ export function createTestCodeTool(compileFn: CompileFn) {
         // Race the compilation against a timeout and the abort signal.
         // If the worker hangs (crash, infinite loop), this prevents the
         // chat from blocking forever.
+        let timeoutTimer: ReturnType<typeof setTimeout> | undefined;
         const result = await Promise.race([
           compileFn(code),
           new Promise<never>((_, reject) => {
-            const timer = setTimeout(
+            timeoutTimer = setTimeout(
               () => reject(new Error('Compilation timed out after 60s')),
               COMPILE_TIMEOUT_MS,
             );
             // Also reject if abort signal fires during compilation
             abortSignal?.addEventListener('abort', () => {
-              clearTimeout(timer);
+              clearTimeout(timeoutTimer);
               reject(new Error('Cancelled'));
             }, { once: true });
           }),
         ]);
+        // Clear timeout on happy path — prevents timer leak
+        clearTimeout(timeoutTimer);
 
         // Check abort again after compilation — don't push stale results
         if (abortSignal?.aborted) {

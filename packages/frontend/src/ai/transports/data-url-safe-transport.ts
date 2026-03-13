@@ -131,10 +131,21 @@ export class DataUrlSafeChatTransport {
     messages: any[];
     abortSignal?: AbortSignal;
   }) {
-    const validatedMessages = await validateUIMessages({
-      messages,
-      tools: this.agent.tools,
-    });
+    let validatedMessages;
+    try {
+      validatedMessages = await validateUIMessages({
+        messages,
+        tools: this.agent.tools,
+      });
+    } catch (err) {
+      console.error('[Transport] Message validation failed:', err);
+      // Return an empty stream with an error message rather than crashing
+      return new ReadableStream({
+        start(controller: ReadableStreamDefaultController) {
+          controller.close();
+        },
+      });
+    }
 
     const modelMessages = await convertToModelMessages(validatedMessages, {
       tools: this.agent.tools,
