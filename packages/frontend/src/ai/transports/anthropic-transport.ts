@@ -28,18 +28,25 @@ export function createAnthropicTransport(
   const tools = { test_code: createTestCodeTool(compileFn) };
 
   let lastTestResult: 'none' | 'failed' | 'succeeded' = 'none';
-  let stepsAfterSuccess = 0;
 
   const agent = new ToolLoopAgent({
     model: anthropic(resolvedModel),
     instructions: systemPrompt,
     tools,
     stopWhen: ({ steps }) => {
-      if (steps.length >= 6) return true;
-      if (lastTestResult === 'succeeded') {
-        stepsAfterSuccess++;
-        if (stepsAfterSuccess > 1) {
-          console.log('[Anthropic] Stopping loop: success + text step completed');
+      if (steps.length >= 6) {
+        console.log('[Anthropic] Stopping loop: max steps reached');
+        return true;
+      }
+      for (let i = 0; i < steps.length - 1; i++) {
+        const hasSuccess = steps[i]!.toolResults.some(
+          (r: { toolName: string; output: unknown }) => {
+            const out = r.output as Record<string, unknown> | null;
+            return r.toolName === 'test_code' && out?.success === true;
+          },
+        );
+        if (hasSuccess) {
+          console.log(`[Anthropic] Stopping loop: success at step ${i + 1}, text step ${steps.length} completed`);
           return true;
         }
       }
@@ -66,7 +73,6 @@ export function createAnthropicTransport(
     agent,
     onBeforeStream() {
       lastTestResult = 'none';
-      stepsAfterSuccess = 0;
     },
   });
 }
