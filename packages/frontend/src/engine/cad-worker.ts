@@ -164,9 +164,14 @@ micropip.add_mock_package("py-lib3mf", "2.4.1",
     // 8. Install build123d + sqlite3
     console.log('[Worker] Installing build123d + sqlite3...');
     await micropip.install(['build123d==0.10.0', 'sqlite3']);
+    postStatus('loading-build123d', 80);
+
+    // 9. Install bd_warehouse (parametric parts: threads, fasteners, bearings, gears)
+    console.log('[Worker] Installing bd_warehouse...');
+    await micropip.install('bd_warehouse');
     postStatus('loading-build123d', 85);
 
-    // 9. Pre-import build123d and numpy into global namespace
+    // 10. Pre-import build123d and numpy into global namespace
     console.log('[Worker] Pre-importing build123d + numpy...');
     await pyodide.runPythonAsync(`
 from build123d import *
@@ -174,7 +179,7 @@ import numpy
 `);
     postStatus('initializing', 95);
 
-    // 10. Load the execute helper script
+    // 11. Load the execute helper script
     console.log('[Worker] Loading execute helper...');
     await pyodide.runPythonAsync(EXECUTE_HELPER);
     await pyodide.runPythonAsync(EXPORT_HELPER);
