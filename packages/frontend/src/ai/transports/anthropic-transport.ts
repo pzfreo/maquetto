@@ -1,7 +1,7 @@
-import { ToolLoopAgent } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
-import { createTestCodeTool, type CompileFn } from '../tools/test-code-tool';
+import type { CompileFn } from '../tools/test-code-tool';
 import { DataUrlSafeChatTransport } from './data-url-safe-transport';
+import { createToolLoopAgent } from './create-tool-loop-agent';
 
 /**
  * Creates a ChatTransport that talks directly to Anthropic Claude.
@@ -25,48 +25,12 @@ export function createAnthropicTransport(
     },
   });
 
-  const tools = { test_code: createTestCodeTool(compileFn) };
+  const { agent, onBeforeStream } = createToolLoopAgent(
+    anthropic(resolvedModel),
+    systemPrompt,
+    compileFn,
+    'Anthropic',
+  );
 
-  let lastTestResult: 'none' | 'failed' | 'succeeded' = 'none';
-  let stepsAfterSuccess = 0;
-
-  const agent = new ToolLoopAgent({
-    model: anthropic(resolvedModel),
-    instructions: systemPrompt,
-    tools,
-    stopWhen: ({ steps }) => {
-      if (steps.length >= 6) return true;
-      if (lastTestResult === 'succeeded') {
-        stepsAfterSuccess++;
-        if (stepsAfterSuccess > 1) {
-          console.log('[Anthropic] Stopping loop: success + text step completed');
-          return true;
-        }
-      }
-      return false;
-    },
-    prepareStep() {
-      if (lastTestResult === 'succeeded') return { toolChoice: 'none' as const };
-      if (lastTestResult === 'failed') return { toolChoice: 'required' as const };
-      return { toolChoice: 'auto' as const };
-    },
-    onStepFinish({ stepNumber, finishReason, toolCalls, toolResults }) {
-      console.log(`[Anthropic] Step ${stepNumber} finished: reason=${finishReason}, toolCalls=${toolCalls.length}, toolResults=${toolResults.length}`);
-      for (const r of toolResults) {
-        console.log(`[Anthropic]   tool=${r.toolName} output=`, r.output);
-        if (r.toolName === 'test_code') {
-          const output = r.output as Record<string, unknown>;
-          lastTestResult = output.success === true ? 'succeeded' : 'failed';
-        }
-      }
-    },
-  });
-
-  return new DataUrlSafeChatTransport({
-    agent,
-    onBeforeStream() {
-      lastTestResult = 'none';
-      stepsAfterSuccess = 0;
-    },
-  });
+  return new DataUrlSafeChatTransport({ agent, onBeforeStream });
 }

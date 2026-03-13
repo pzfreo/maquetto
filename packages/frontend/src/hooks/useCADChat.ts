@@ -70,10 +70,6 @@ const noopTransport = {
 export function useCADChat(engine: CadEngine | null) {
   const aiProvider = useAppStore((s) => s.aiProvider);
   const customSystemPrompt = useAppStore((s) => s.customSystemPrompt);
-  const code = useAppStore((s) => s.code);
-  const parts = useAppStore((s) => s.parts);
-  const selectedPartIds = useAppStore((s) => s.selectedPartIds);
-  const cameraDescription = useAppStore((s) => s.cameraDescription);
 
   // Stable ref to engine so compileFn doesn't change when engine becomes ready
   const engineRef = useRef(engine);
@@ -116,15 +112,24 @@ export function useCADChat(engine: CadEngine | null) {
       return;
     }
 
+    // Read fresh state from the store to avoid stale closure values.
+    // React state (code, parts, etc.) may be outdated if the user edited
+    // code or the viewport changed between renders.
+    const freshState = useAppStore.getState();
+    const freshCode = freshState.code;
+    const freshParts = freshState.parts;
+    const freshSelectedPartIds = freshState.selectedPartIds;
+    const freshCameraDescription = freshState.cameraDescription;
+
     const context = assembleContextText({
-      code,
-      parts,
-      selectedPartIds,
-      cameraDescription,
+      code: freshCode,
+      parts: freshParts,
+      selectedPartIds: freshSelectedPartIds,
+      cameraDescription: freshCameraDescription,
       screenshotDataUrl: null,
     });
 
-    console.log(`[Chat] Sending message (${text.length} chars, ${parts.length} parts, ${selectedPartIds.length} selected, screenshot=${!!options?.includeScreenshot})`);
+    console.log(`[Chat] Sending message (${text.length} chars, ${freshParts.length} parts, ${freshSelectedPartIds.length} selected, screenshot=${!!options?.includeScreenshot})`);
 
     const messageWithContext = context
       ? `${text}\n\n---\n${context}`
@@ -154,7 +159,7 @@ export function useCADChat(engine: CadEngine | null) {
       text: messageWithContext,
       ...(screenshotFiles && { files: screenshotFiles }),
     });
-  }, [transport, code, parts, selectedPartIds, cameraDescription, chat]);
+  }, [transport, chat]);
 
   return {
     messages: chat.messages,
