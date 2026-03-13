@@ -218,6 +218,9 @@ export function ChatPanel({ onCompile, engine }: ChatPanelProps) {
       const toolCode = getCodeFromToolCalls(lastAssistant.parts as ReadonlyArray<Record<string, any>>);
       if (toolCode) {
         const fullText = getMessageText(lastAssistant.parts);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const partTypes = lastAssistant.parts.map((p: Record<string, any>) => p.type);
+        console.log(`[Chat] Streaming finished with tool code. Text: ${fullText.length} chars, parts: [${partTypes.join(', ')}]`);
         if (fullText) {
           const summary = extractSummary(fullText);
           const userMessages = messages.filter((m) => m.role === 'user');

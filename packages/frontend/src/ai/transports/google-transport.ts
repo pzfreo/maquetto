@@ -94,23 +94,30 @@ export function createGoogleTransport(
 
   const tools = { test_code: createTestCodeTool(compileFn) };
 
-  // Track test_code result to control tool usage and loop stopping.
+  // Track test_code result to control tool usage after success/failure.
   let lastTestResult: 'none' | 'failed' | 'succeeded' = 'none';
-  // After success, allow exactly 1 more step for the AI's text response.
-  let stepsAfterSuccess = 0;
 
   const agent = new ToolLoopAgent({
     model: google(resolvedModel),
     instructions: systemPrompt,
     tools,
     stopWhen: ({ steps }) => {
-      if (steps.length >= 6) return true;
-      // After success, allow 1 more step for the text response, then stop.
-      // This is the hard stop — toolChoice: 'none' is belt-and-suspenders.
-      if (lastTestResult === 'succeeded') {
-        stepsAfterSuccess++;
-        if (stepsAfterSuccess > 1) {
-          console.log('[Google] Stopping loop: success + text step completed');
+      if (steps.length >= 6) {
+        console.log('[Google] Stopping loop: max steps reached');
+        return true;
+      }
+      // After a successful test_code, check if there's already been a
+      // subsequent step (the text response). Use the steps array directly
+      // to avoid mutable counter issues.
+      for (let i = 0; i < steps.length - 1; i++) {
+        const hasSuccess = steps[i]!.toolResults.some(
+          (r: { toolName: string; output: unknown }) => {
+            const out = r.output as Record<string, unknown> | null;
+            return r.toolName === 'test_code' && out?.success === true;
+          },
+        );
+        if (hasSuccess) {
+          console.log(`[Google] Stopping loop: success at step ${i + 1}, text step ${steps.length} completed`);
           return true;
         }
       }
@@ -137,7 +144,6 @@ export function createGoogleTransport(
     agent,
     onBeforeStream() {
       lastTestResult = 'none';
-      stepsAfterSuccess = 0;
     },
   });
 }
