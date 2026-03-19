@@ -70,8 +70,36 @@
       crossorigin
     />
   </head>
-  <body>
-    <div id="root"></div>
+  <body style="margin:0;background:#1e1e2e">
+    <div id="root">
+      <!-- Static content for crawlers / pre-React load — replaced by React on mount -->
+      <div style="max-width:720px;margin:60px auto;padding:0 24px;font-family:system-ui,sans-serif;color:#e0e0e0;line-height:1.6;background:#1e1e2e">
+        <h1 style="font-size:28px;margin-bottom:8px">Maquetto — AI-Powered CAD IDE</h1>
+        <p style="font-size:16px;color:#aaa;margin-bottom:24px">Design 3D models with AI assistance directly in your browser. Free and open source.</p>
+
+        <h2 style="font-size:18px;margin-top:32px">What is Maquetto?</h2>
+        <p>Maquetto is a browser-based CAD IDE that lets you write Python CAD code using <strong>Build123d</strong>, see real-time 3D previews, and use AI to modify designs through natural language. Everything runs locally in your browser — no installation required.</p>
+
+        <h2 style="font-size:18px;margin-top:24px">Key Features</h2>
+        <ul>
+          <li><strong>Python CAD editor</strong> — Write parametric 3D models with Build123d, powered by OpenCASCADE via WebAssembly</li>
+          <li><strong>Real-time 3D viewport</strong> — See your designs update live with PBR rendering, part labels, and interactive controls</li>
+          <li><strong>AI chat assistant</strong> — Describe changes in natural language and the AI modifies your CAD code, with viewport context for spatial awareness</li>
+          <li><strong>Export to STL &amp; STEP</strong> — Download your models for 3D printing or further CAD work</li>
+          <li><strong>Cloud save</strong> — Sign in with Google to save and manage your projects</li>
+        </ul>
+
+        <h2 style="font-size:18px;margin-top:24px">How It Works</h2>
+        <p>Maquetto runs a full Python environment (Pyodide) and the OpenCASCADE geometry kernel (OCP.wasm) entirely in your browser. You write Build123d Python code in the editor, click Run, and see the 3D result instantly. The AI assistant can read your code and viewport to suggest modifications.</p>
+
+        <h2 style="font-size:18px;margin-top:24px">Google Sign-In</h2>
+        <p>Maquetto uses Google Sign-In for optional cloud project storage. When you sign in, Maquetto stores your projects securely so you can access them from any device. You can also use Google's Gemini AI models for the chat assistant by signing in with your Google account. Maquetto only requests access to save your projects and, if you choose, to use Google's AI services. You can use Maquetto without signing in — all core features work without an account.</p>
+
+        <p style="margin-top:32px;font-size:13px;color:#888">
+          <a href="/privacy.html" style="color:#888">Privacy Policy</a> · <a href="/terms.html" style="color:#888">Terms of Service</a>
+        </p>
+      </div>
+    </div>
     <nav id="html-footer" style="position:fixed;bottom:0;width:100%;text-align:center;padding:4px;font-size:11px;background:#16162a;z-index:0">
       <a href="/privacy.html" style="color:#666;text-decoration:none">Privacy</a>
       <span style="color:#444"> · </span>

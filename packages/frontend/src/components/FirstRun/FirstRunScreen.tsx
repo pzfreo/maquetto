@@ -150,7 +150,7 @@ export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
           style={{
             fontSize: '15px',
             color: '#aaa',
-            marginBottom: '36px',
+            marginBottom: '16px',
             lineHeight: 1.6,
           }}
         >
@@ -160,6 +160,21 @@ export function FirstRunScreen({ onComplete }: FirstRunScreenProps) {
           <br />
           and use AI to modify designs through natural language.
         </p>
+        <div
+          style={{
+            fontSize: '13px',
+            color: '#777',
+            marginBottom: '32px',
+            lineHeight: 1.6,
+            textAlign: 'left',
+            padding: '12px 16px',
+            background: 'rgba(255,255,255,0.03)',
+            borderRadius: '8px',
+          }}
+        >
+          <p style={{ margin: '0 0 8px' }}>Maquetto is a free, browser-based CAD tool. Write parametric 3D models in Python with Build123d, powered by OpenCASCADE via WebAssembly. Describe changes in natural language and the AI modifies your code with spatial context from the viewport.</p>
+          <p style={{ margin: 0 }}>Export to STL or STEP for 3D printing. Sign in with Google for cloud project storage and free access to Gemini AI — or bring your own API key.</p>
+        </div>
 
         {/* Primary: BYOK card */}
         <div
