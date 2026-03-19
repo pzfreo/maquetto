@@ -4,6 +4,7 @@ import type { AIProviderType, CadEngine, ExportFormat } from '@maquetto/api-type
 import { useAppStore } from '../../store';
 import { EngineStatusBadge } from './EngineStatusBadge';
 import { ProviderSettingsModal } from '../Settings/ProviderSettingsModal';
+import { AboutModal } from './AboutModal';
 import { signInWithGoogle } from '../../lib/auth-actions';
 import { useProjects } from '../../hooks/useProjects';
 import { downloadBlob, downloadText } from '../../lib/download';
@@ -29,6 +30,7 @@ export function Toolbar({ onCompile, onStop, onRetryEngine, engine, onOpenProjec
   const projectSaving = useAppStore((s) => s.projectSaving);
   const updateProjectTitle = useAppStore((s) => s.updateProjectTitle);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
   const [exporting, setExporting] = useState<ExportFormat | null>(null);
   const [editingTitle, setEditingTitle] = useState(false);
@@ -396,6 +398,12 @@ export function Toolbar({ onCompile, onStop, onRetryEngine, engine, onOpenProjec
               {exporting === 'step' ? 'Exporting STEP...' : 'Export STEP'}
             </button>
 
+            <div style={menuSep} />
+
+            <button onClick={() => { setFileMenuOpen(false); setAboutOpen(true); }} style={menuItemStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>
+              About Maquetto
+            </button>
+
             {/* On mobile: settings, AI, account all go in the menu */}
             {isMobile && (
               <>
@@ -605,6 +613,10 @@ export function Toolbar({ onCompile, onStop, onRetryEngine, engine, onOpenProjec
       <ProviderSettingsModal
         isOpen={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+      />
+      <AboutModal
+        isOpen={aboutOpen}
+        onClose={() => setAboutOpen(false)}
       />
     </div>
   );
